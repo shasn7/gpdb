@@ -621,7 +621,8 @@ apply_motion(PlannerInfo *root, Plan *plan, Query *query)
 			{
 				if ((plan->flow->flotype == FLOW_PARTITIONED ||
 					(plan->flow->flotype == FLOW_SINGLETON &&
-					 plan->flow->locustype == CdbLocusType_SegmentGeneral)) &&
+					 plan->flow->locustype == CdbLocusType_SegmentGeneral) ||
+					 plan->flow->flotype == FLOW_REPLICATED) &&
 					 !root->glob->is_parallel_cursor)
 					bringResultToDispatcher = true;
 
@@ -3787,4 +3788,49 @@ contains_outer_params(Node *node, void *context)
 		}
 	}
 	return expression_tree_walker(node, contains_outer_params, context);
+}
+
+typedef struct MotionWithParamContext
+{
+	plan_tree_base_prefix base; /* Required prefix for plan_tree_walker/mutator */
+	Bitmapset  *nestLoopParams; /* Nestloop params */
+} MotionWithParamContext;
+
+/*
+ * check whether pass params by a motion
+ */
+static bool
+checkMotionWithParamWalker(Node *node, MotionWithParamContext* motionWithParamcontext)
+{
+	if (node == NULL)
+		return false;
+
+	if (IsA(node, Motion))
+	{
+		Plan * plan = (Plan *) node;
+		Bitmapset  *finalExtParam;
+		if (!bms_is_empty(plan->extParam))
+		{
+			finalExtParam = bms_intersect(plan->extParam, motionWithParamcontext->nestLoopParams);
+			if (!bms_is_empty(finalExtParam))
+			{
+				elog(ERROR, "Passing parameters across motion is not supported.");
+			}
+		}
+	}
+
+	return plan_tree_walker(node, checkMotionWithParamWalker, motionWithParamcontext);
+}
+
+/*
+ * We can not deliver a param by a motion node.
+ * If there is a param on motion node, we should throw an error.
+ */
+void
+checkMotionWithParam(Node *node, Bitmapset *bmsNestParams, PlannerInfo *root)
+{
+	MotionWithParamContext motionWithParamcontext;
+	motionWithParamcontext.nestLoopParams = bmsNestParams;
+	planner_init_plan_tree_base(&motionWithParamcontext.base, root);
+	checkMotionWithParamWalker(node, &motionWithParamcontext);
 }
