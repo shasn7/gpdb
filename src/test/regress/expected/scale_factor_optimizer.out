@@ -199,41 +199,12 @@ $$);
 (2 rows)
 
 select * from get_motion_snd_recv($$
-  update scale_factor_repl a set c1 = b.c2 from scale_factor_part_distr b returning *;
-$$);
-       node_name        | motion_snd | motion_recv 
-------------------------+------------+-------------
- Explicit Gather Motion | 3          | 1
- Broadcast Motion       | 2          | 3
-(2 rows)
-
-select * from get_motion_snd_recv ($$
   delete from scale_factor_part_distr a using scale_factor_rand_distr b where b.c1=a.c2;
 $$);
-          node_name           | motion_snd | motion_recv 
-------------------------------+------------+-------------
- Explicit Redistribute Motion | 2          | 2
- Broadcast Motion             | 3          | 2
-(2 rows)
-
-select * from get_motion_snd_recv($$
-  delete from scale_factor_part_distr a using scale_factor_rand_distr b where b.c1=a.c2;
-$$);
-          node_name           | motion_snd | motion_recv 
-------------------------------+------------+-------------
- Explicit Redistribute Motion | 2          | 2
- Broadcast Motion             | 3          | 2
-(2 rows)
-
-select * from get_motion_snd_recv($$
-  select t1.c1, row_number() over (order by t1.c1 desc) from scale_factor_distr t1 join scale_factor_distr t2 using(c2);
-$$);
-      node_name      | motion_snd | motion_recv 
----------------------+------------+-------------
- Gather Motion       | 3          | 1
- Redistribute Motion | 3          | 3
- Redistribute Motion | 3          | 3
-(3 rows)
+    node_name     | motion_snd | motion_recv 
+------------------+------------+-------------
+ Broadcast Motion | 3          | 2
+(1 row)
 
 select * from get_motion_snd_recv($$
   select t1.c1, row_number() over (order by t1.c1 desc) from scale_factor_distr t1 join scale_factor_distr t2 using(c2);

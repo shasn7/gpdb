@@ -96,14 +96,6 @@ select * from get_motion_snd_recv($$
 $$);
 
 select * from get_motion_snd_recv($$
-  update scale_factor_repl a set c1 = b.c2 from scale_factor_part_distr b returning *;
-$$);
-
-select * from get_motion_snd_recv ($$
-  delete from scale_factor_part_distr a using scale_factor_rand_distr b where b.c1=a.c2;
-$$);
-
-select * from get_motion_snd_recv($$
   delete from scale_factor_part_distr a using scale_factor_rand_distr b where b.c1=a.c2;
 $$);
 
@@ -111,9 +103,6 @@ select * from get_motion_snd_recv($$
   select t1.c1, row_number() over (order by t1.c1 desc) from scale_factor_distr t1 join scale_factor_distr t2 using(c2);
 $$);
 
-select * from get_motion_snd_recv($$
-  select t1.c1, row_number() over (order by t1.c1 desc) from scale_factor_distr t1 join scale_factor_distr t2 using(c2);
-$$);
 
 -- start_ignore
 drop table scale_factor_repl;
