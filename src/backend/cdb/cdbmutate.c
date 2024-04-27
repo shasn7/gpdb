@@ -743,9 +743,9 @@ apply_motion(PlannerInfo *root, Plan *plan, Query *query)
 			Insist(focusPlan(plan, false, false));
 	}
 
-	(void) plan_tree_walker((Node *) plan, broadcast_motion_walker, &state);
-
 	result = (Plan *) apply_motion_mutator((Node *) plan, &state);
+
+	//(void) plan_tree_walker((Node *) result, broadcast_motion_walker, &state);
 
 	if (needToAssignDirectDispatchContentIds)
 	{
