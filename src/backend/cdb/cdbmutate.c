@@ -74,10 +74,8 @@ typedef struct ApplyMotionState
 	plan_tree_base_prefix base; /* Required prefix for
 								 * plan_tree_walker/mutator */
 	int			nextMotionID;
-	int			numsegments;
 	int			sliceDepth;
 	HTAB	   *planid_subplans; /* hash table for InitPlanItem */
-	Node	   *from;
 
 	/* Context for ModifyTable to elide Explicit Redistribute Motion */
 	bool		mtIsChecking;		/* True if we encountered ModifyTable
@@ -377,50 +375,6 @@ get_partitioned_policy_from_flow(Plan *plan)
 									   policyopclasses,
 									   GP_POLICY_DEFAULT_NUMSEGMENTS());
 }
-
-
-static bool
-rows_number_walker(Node *node, ApplyMotionState *context)
-{
-	if (node == NULL)
-		return false;
-
-	if (is_plan_node(node))
-	{
-		Plan	  *plan = (Plan *) node;
-
-		if (plan->flow != NULL && plan->flow->req_move == MOVEMENT_BROADCAST)
-			return true;
-
-		plan->plan_rows *= context->numsegments;
-	}
-
-	return plan_tree_walker(node, rows_number_walker, context);
-}
-
-
-static bool
-broadcast_motion_walker(Node *node, ApplyMotionState *context)
-{
-	if (node == NULL)
-		return false;
-
-	if (is_plan_node(node))
-	{
-		Plan	  *plan = (Plan *) node;
-
-		if (plan->flow != NULL && plan->flow->req_move == MOVEMENT_BROADCAST)
-		{
-			context->numsegments = plan->flow->numsegments;
-			(void )rows_number_walker(context->from, context);
-		}
-	}
-	else if (IsA(node, Motion) || IsA(node, SubPlan))
-		context->from = node;
-
-	return plan_tree_walker(node, broadcast_motion_walker, context);
-}
-
 
 /* -------------------------------------------------------------------------
  * Function apply_motion() and apply_motion_mutator() add motion nodes to a
@@ -1241,7 +1195,6 @@ add_slice_to_motion(Motion *motion,
 				/* broadcast */
 				motion->plan.flow = makeFlow(FLOW_REPLICATED, numsegments);
 				motion->plan.flow->locustype = CdbLocusType_Replicated;
-				// motion->plan.plan_rows *= numsegments;
 			}
 			else
 			{
