@@ -412,7 +412,6 @@ apply_motion(PlannerInfo *root, Plan *plan, Query *query)
 													 * descend into subplan
 													 * plan */
 	state.nextMotionID = 1;		/* Start at 1 so zero will mean "unassigned". */
-	state.numsegments = numsegments;
 	state.sliceDepth = 0;
 	state.mtIsChecking = false;
 	state.mtResultRelations = NIL;
