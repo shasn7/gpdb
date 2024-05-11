@@ -698,8 +698,6 @@ apply_motion(PlannerInfo *root, Plan *plan, Query *query)
 
 	result = (Plan *) apply_motion_mutator((Node *) plan, &state);
 
-	//(void) plan_tree_walker((Node *) result, broadcast_motion_walker, &state);
-
 	if (needToAssignDirectDispatchContentIds)
 	{
 		/* figure out if we can run on a reduced set of nodes */
