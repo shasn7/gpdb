@@ -376,6 +376,7 @@ get_partitioned_policy_from_flow(Plan *plan)
 									   GP_POLICY_DEFAULT_NUMSEGMENTS());
 }
 
+
 /* -------------------------------------------------------------------------
  * Function apply_motion() and apply_motion_mutator() add motion nodes to a
  * top-level Plan tree as directed by the Flow nodes in the plan.
