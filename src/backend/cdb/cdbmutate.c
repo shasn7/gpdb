@@ -1193,6 +1193,7 @@ add_slice_to_motion(Motion *motion,
 				/* broadcast */
 				motion->plan.flow = makeFlow(FLOW_REPLICATED, numsegments);
 				motion->plan.flow->locustype = CdbLocusType_Replicated;
+
 			}
 			else
 			{
