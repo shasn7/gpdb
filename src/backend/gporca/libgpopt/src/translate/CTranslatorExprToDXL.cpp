@@ -470,7 +470,6 @@ CTranslatorExprToDXL::CreateDXLNode(CExpression *pexpr,
 	// for instance, if the grouping /order by /partition/ distribution columns
 	// are no longer needed
 	CDXLNode *pdxlnNew = NULL;
-	
 	CDXLNode *dxlnode = (this->*pf)(pexpr, colref_array, pdrgpdsBaseTables,
 									pulNonGatherMotions, pfDML);
 

@@ -1,3 +1,4 @@
+-- start_ignore
 create or replace function get_explain_xml_output(query_string text)
 returns xml as
 $$
@@ -35,6 +36,7 @@ begin
   from get_explain_xml_output (query_string) as x;
 end;
 $_$ language plpgsql;
+-- end_ignore
 
 create table scale_factor_repl(c1 int, c2 int) distributed replicated;
 create table scale_factor_distr(c1 int, c2 int) distributed by (c1);
@@ -102,6 +104,7 @@ select * from get_motion_snd_recv($$
 $$);
 
 
+-- start_ignore
 drop table scale_factor_repl;
 drop table scale_factor_distr;
 drop table scale_factor_rand_distr;
@@ -111,3 +114,4 @@ drop table scale_factor_master_only;
 drop function get_motion_snd_recv(text);
 drop function get_explain_xml_output(text);
 drop function simplified_xml_plan(text);
+-- end_ignore
