@@ -36,9 +36,7 @@ $_$ language plpgsql;
 create table scale_factor_repl(c1 int, c2 int) distributed replicated;
 create table scale_factor_distr(c1 int, c2 int) distributed by (c1);
 create table scale_factor_rand_distr(c1 int, c2 int) distributed randomly;
-create table scale_factor_partitioned (a int) partition by range(a) (start(1) end(10) every(1));
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+create table scale_factor_partitioned (a int) distributed by (a) partition by range(a) (start(1) end(10) every(1));
 NOTICE:  CREATE TABLE will create partition "scale_factor_partitioned_1_prt_1" for table "scale_factor_partitioned"
 NOTICE:  CREATE TABLE will create partition "scale_factor_partitioned_1_prt_2" for table "scale_factor_partitioned"
 NOTICE:  CREATE TABLE will create partition "scale_factor_partitioned_1_prt_3" for table "scale_factor_partitioned"
@@ -48,9 +46,7 @@ NOTICE:  CREATE TABLE will create partition "scale_factor_partitioned_1_prt_6" f
 NOTICE:  CREATE TABLE will create partition "scale_factor_partitioned_1_prt_7" for table "scale_factor_partitioned"
 NOTICE:  CREATE TABLE will create partition "scale_factor_partitioned_1_prt_8" for table "scale_factor_partitioned"
 NOTICE:  CREATE TABLE will create partition "scale_factor_partitioned_1_prt_9" for table "scale_factor_partitioned"
-create table scale_factor_master_only (a int);
-NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
-HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+create table scale_factor_master_only (a int) distributed by (a);
 set allow_system_table_mods=true;
 delete from gp_distribution_policy where localoid='scale_factor_master_only'::regclass;
 reset allow_system_table_mods;

@@ -39,8 +39,8 @@ $_$ language plpgsql;
 create table scale_factor_repl(c1 int, c2 int) distributed replicated;
 create table scale_factor_distr(c1 int, c2 int) distributed by (c1);
 create table scale_factor_rand_distr(c1 int, c2 int) distributed randomly;
-create table scale_factor_partitioned (a int) partition by range(a) (start(1) end(10) every(1));
-create table scale_factor_master_only (a int);
+create table scale_factor_partitioned (a int) distributed by (a) partition by range(a) (start(1) end(10) every(1));
+create table scale_factor_master_only (a int) distributed by (a);
 
 set allow_system_table_mods=true;
 delete from gp_distribution_policy where localoid='scale_factor_master_only'::regclass;
