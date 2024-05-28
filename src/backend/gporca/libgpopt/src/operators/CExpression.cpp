@@ -432,7 +432,7 @@ CExpression::AssertValidPropDerivation(const CDrvdProp::EPropType ept)
 #endif	// GPOS_DEBUG
 
 void
-CExpression::SetMotionInputSegmentsNumberForChildren()
+CExpression::SetMotionInputSegmentsNumberForChildren() const
 {
 	const ULONG arity = Arity();
 

@@ -219,7 +219,7 @@ public:
 		return m_cost;
 	}
 
-	void SetMotionInputSegmentsNumberForChildren();
+	void SetMotionInputSegmentsNumberForChildren() const;
 
 	void
 	SetMotionInputSegmentsNumber(ULONG motionInputSegmentsNumber)
