@@ -1469,7 +1469,6 @@ ExplainNode(PlanState *planstate, List *ancestors,
 							 * number of receivers can be less if we are
 							 * expanding a cluster.
 							 */
-							scaleFactor = motion_recv;
 						}
 						else if (plan->lefttree->flow->locustype == CdbLocusType_Replicated)
 						{
