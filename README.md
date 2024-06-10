@@ -45,9 +45,7 @@ Follow [appropriate linux steps](README.linux.md) for getting your system ready 
 ## xerces
 
 ORCA requires xerces 3.1 or gp-xerces. For the most up-to-date way of
-building gp-xerces, see the README at the following repository:
-
-* https://github.com/greenplum-db/gp-xerces
+building gp-xerces, see the README in [this repository](https://github.com/arenadata/gp-xerces).
 
 ### Build the database
 
