@@ -57,30 +57,20 @@
     ./README.CentOS.bash
     ```
 
-## For Ubuntu:
+## For Ubuntu (versions 20.04 or newer):
 
-- Install Dependencies
-  When you run the README.ubuntu.bash script for dependencies, you will be asked to configure realm for kerberos.
-  You can enter any realm, since this is just for testing, and during testing, it will reconfigure a local server/client.
-  If you want to skip this manual configuration, use:
-  `export DEBIAN_FRONTEND=noninteractive`
-
+- Install dependencies using README.ubuntu.bash script:
   ```bash
   ./README.ubuntu.bash
   ```
 
-- If you want to use gcc-6 and g++-6:
+- Create symbolic linc to Python 2 in `/usr/bin`:
 
   ```bash
-  add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  apt-get update
-  apt-get install -y gcc-6 g++-6
+  sudo ln -s python2 /usr/bin/python
   ```
 
 ## Common Platform Tasks:
-
-Make sure that you add `/usr/local/lib` to `/etc/ld.so.conf`,
-then run command `ldconfig`.
 
 1. Create gpadmin and setup ssh keys
 
@@ -148,3 +138,12 @@ then run command `ldconfig`.
 
     EOF'
     ```
+4. Make sure that you add `/usr/local/lib` to `/etc/ld.so.conf`, then run:
+    ```bash
+    sudo ldconfig
+    ```
+5. Install the **correct** version of the Xerces-C++ library. 
+To do this, go to [the next step of the main instructions](README.md#xerces).
+
+
+
