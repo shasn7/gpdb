@@ -57,7 +57,7 @@
     ./README.CentOS.bash
     ```
 
-## For Ubuntu (versions 20.04 or newer):
+## For Ubuntu (versions 20.04 or 22.04):
 
 - Install dependencies using README.ubuntu.bash script:
   ```bash
