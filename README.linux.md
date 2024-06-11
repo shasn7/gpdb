@@ -64,7 +64,7 @@
   ./README.ubuntu.bash
   ```
 
-- Create symbolic linc to Python 2 in `/usr/bin`:
+- Create symbolic link to Python 2 in `/usr/bin`:
 
   ```bash
   sudo ln -s python2 /usr/bin/python
