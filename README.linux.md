@@ -122,28 +122,25 @@
     net.core.rmem_max = 2097152
     net.core.wmem_max = 2097152
     vm.overcommit_memory = 2
-
     EOF'
+    sudo sysctl -p # Apply settings
+    ```      
 
+4. Change user and system limits:
+    ```bash
     sudo bash -c 'cat >> /etc/security/limits.conf <<-EOF
     * soft nofile 65536
     * hard nofile 65536
     * soft nproc 131072
     * hard nproc 131072
-
     EOF'
-
-    sudo bash -c 'cat >> /etc/ld.so.conf <<-EOF
-    /usr/local/lib
-
-    EOF'
+    su - $USER # Apply settings
     ```
-4. Make sure that you add `/usr/local/lib` to `/etc/ld.so.conf`, then run:
-    ```bash
-    sudo ldconfig
-    ```
+
 5. Install the **correct** version of the Xerces-C++ library. 
 To do this, go to [the next step of the main instructions](README.md#xerces).
 
-
-
+6. Update the library cache:
+    ```bash
+    sudo ldconfig
+    ```
