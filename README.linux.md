@@ -70,6 +70,14 @@
   sudo ln -s python2 /usr/bin/python
   ```
 
+- Optionally, installing Kerberos may be required to configure secure access to GPDB. To install Kerberos, run:
+  ```bash
+  sudo apt-get install -y krb5-kdc krb5-admin-server
+  ```
+  Note: You will be asked to configure realm for Kerberos. You can enter any realm, since this is just for testing,
+  and during testing, it will reconfigure a local server/client. If you want to skip this manual configuration, use:
+  `export DEBIAN_FRONTEND=noninteractive`
+
 ## Common Platform Tasks:
 
 1. Create gpadmin and setup ssh keys
