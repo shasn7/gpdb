@@ -70,6 +70,11 @@
   sudo ln -s python2 /usr/bin/python
   ```
 
+- Ensure that your system supports American English with an internationally compatible character encoding scheme. To do this, run:
+  ```bash
+  sudo locale-gen "en_US.UTF-8"
+  ```
+  
 - Optionally, installing Kerberos may be required to configure secure access to GPDB. To install Kerberos, run:
   ```bash
   sudo apt-get install -y krb5-kdc krb5-admin-server
