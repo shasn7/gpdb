@@ -9,6 +9,7 @@ sudo apt-get install -y \
   g++ \
   gcc \
   git \
+  iputils-ping \
   libapr1-dev \
   libbz2-dev \
   libcurl4-openssl-dev \
@@ -20,6 +21,7 @@ sudo apt-get install -y \
   libxml2-dev \
   libyaml-dev \
   libzstd-dev \
+  locales \
   net-tools \
   openssh-client \
   openssh-server \
