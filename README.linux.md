@@ -158,7 +158,7 @@ To do this, go to [the next step of the main instructions](README.md#xerces).
     sudo ldconfig
     ```
 
-7. Make sure that you download yaml and psutil as submodules. To do this, use git clone --recurse-submodules when downloading the source code. If you want to update the submodules, run:
+7. Make sure that you download yaml and psutil as submodules. To do this, use `git clone --recurse-submodules` when downloading the source code. If you want to update the submodules, run:
     ```bash
     git submodule update --init --recursive --force
     ```
