@@ -2,41 +2,27 @@
 
 This fork contains helper files to allow building GPDB with Address Sanitizer.
 
-You will need a C compiler that comes with libasan, either GCC or Clang (this
-was tested on GCC 12.2).
+Currently, only GCC 12.2 was tested.
 
 > [!NOTE]
 > GPDB and this repository do not support shells other than Bash.
 
-`asan.sh` script has everything ready. On execution, it will run `./configure`
-for you with needed flags and save the GPHOME environment variable. If scripts
-was sourced, it will act as a tweaked `greenplum-path.sh`.
+`asan.sh` script has everything ready. If it's executed, it will run
+`./configure` for you with needed flags and save the `GPHOME` environment
+variable. If scripts was sourced, it will act as a tweaked `greenplum-path.sh`.
+`DATADIRS` will be equal to `gpAux/gpdemo/datadirs`.
 
-Finally, after running `asan.sh` and `make install`, you will need to overwrite
-`LD_PRELOAD` and `ASAN_OPTIONS` environment variables in all bash shells to
-enable the sanitizer for dynamic libraries and redirect it's logs to a file. It
-requires you to put the following lines in your `/etc/bash.bashrc`. These lines
-should be commented out/removed when sanitizer is not needed anymore:
+Before using `asan.sh`, you will need to overwrite log file path and compiler
+for the sanitizer. An example would look like this:
 ```sh
-# Compiler which was used for configure.
-CC="..."
-# A template path for log files that will be created for every process that
-# had an error. Actual files will look like `$ASAN_LOG_PATH.<pid>`. This should
-# point to a filename inside the directory, not the directory itself.
-ASAN_LOG_PATH="..."
-
-export ASAN_OPTIONS="log_path=$ASAN_LOG_PATH:halt_on_error=0"
-export LD_PRELOAD="$LD_PRELOAD:$($CC -print-file-name=libasan.so)"
+CC="gcc"
+CXX="g++"
+LD="mold"
+ASAN_LOG_PATH="/home/sd/Work/asan-logs/asan.log"
 ```
 
-If preceding `LD_PRELOAD` does not work, the libraries can be found manually:
-Usually GCC's library is located in
-`/usr/lib/x86_64-linux-gnu/libasan.so.<version>`, Clang's library is located in
-`/usr/lib/llvm-<version>/lib/clang/<version>/lib/linux/libclang_rt.asan-x86_64.so`
-
-> [!WARNING]
-> Due to us messing with `LD_PRELOAD`, some things that use glibc's shared
-> objects for locale (`ps` and such) may hang and will not work normally!
+The script will modify some files that will be visible in the git diff to be
+available for revert later.
 
 ---
 

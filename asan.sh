@@ -1,50 +1,70 @@
 #!/usr/bin/env bash
 
+set -e
+
+# Variables to be modified manually. A note on this is in README.md.
+CC=""
+CXX=""
+LD=""
+ASAN_LOG_PATH=""
+
+# Globals which shouldn't be modified.
+CLANG=0
+ASAN_SO=""
+ASAN_SO_PATH=""
+SHARED_LIBASAN=""
+
+case "$CC" in clang*)
+    CLANG=1
+esac
+
 sourced() {
-GPHOME=`cat "./GPHOME"`
+GPSRC=`realpath $(dirname $BASH_SOURCE)`
+GPHOME=`cat "$GPSRC/GPHOME"`
 
-if ! [ -d "./gpAux/gpdemo" ]; then
-    echo "Script is not in GPDB source directory!"
-    exit 1
-fi
-
-export DATADIRS=`realpath "./gpAux/gpdemo/datadirs"`
+export DATADIRS="$GPSRC/gpAux/gpdemo/datadirs"
 export MASTER_DATA_DIRECTORY="$DATADIRS/qddir/demoDataDir-1"
 export PGPORT="6000"
 
 if ! [ -d "$GPHOME" ]; then
-    echo "\$GPHOME ($GPHOME) does not exist!"
-else
-    . "$GPHOME/greenplum_path.sh"
+    echo "WARNING: \$GPHOME ($GPHOME) does not exist, can't source greenplum_path.sh."
+    return 1
 fi
+
+. "$GPHOME/greenplum_path.sh"
 }
 
 executed() {
-# Figure out the GPHOME and PREFIX.
+# Find out the PREFIX to use.
 if [ "$GPHOME" != "" ]; then
     PREFIX="$GPHOME"
 elif [ -f "./GPHOME" ]; then
     PREFIX=`cat "./GPHOME"`
 else
-    echo -n "\$GPHOME was not found. PREFIX="
+    echo "WARNING: \$GPHOME was not found."
+    echo -n "PREFIX="
     read PREFIX
 fi
 
-if ! [ -d "$PREFIX" ]; then
-    echo "PREFIX ($PREFIX) does not exist!"
-    exit 1
+# ./GPHOME does not exist if the script was run for the first time.
+#
+# Modify greenplum_path.sh generation script to set ASAN_OPTIONS and LD_PRELOAD.
+# gpssh sources greenplum_path.sh every command.
+if ! [ -f "./GPHOME" ]; then
+    GEN_PATH="./gpMgmt/bin/generate-greenplum-path.sh"
+
+    echo "" >> "$GEN_PATH"
+    echo "echo ''" >> "$GEN_PATH"
+
+    _ASAN_OPTIONS="log_path='$ASAN_LOG_PATH':halt_on_error=0"
+    echo "echo \"export ASAN_OPTIONS=$_ASAN_OPTIONS\"" >> "$GEN_PATH"
+
+    _LD_PRELOAD="\$LD_PRELOAD:$_ASAN_SO_PATH"
+    echo "echo \"export LD_PRELOAD=$_LD_PRELOAD\"" >> "$GEN_PATH"
 fi
 
-# Save the PREFIX into a file and ignore the file.
-if ! [ -f "./GPHOME" -a -d "./.git/info/" ]; then
-    echo "GPHOME" >> "./.git/info/exclude"
-fi
-
+# Save the GPHOME variable.
 echo `realpath "$PREFIX"` > "./GPHOME"
-
-CC="gcc"
-CXX="g++"
-LD="gold"
 
 COMMON_CFLAGS="\
 -O0 \
@@ -78,7 +98,7 @@ DEBUG_DEFS="\
 -DEXTRA_DYNAMIC_MEMORY_DEBUG \
 -DCDB_MOTION_DEBUG"
 
-echo -n "PREFIX='$PREFIX'. Enter to continue. "
+echo -n "PREFIX='$PREFIX'. Enter to continue."
 read _
 
 set +xe
@@ -86,8 +106,8 @@ set +xe
 export CFLAGS="\
 $DEBUG_DEFS \
 $COMMON_CFLAGS \
--O0 \
 $ASAN_CFLAGS \
+$SHARED_LIBASAN \
 $ERROR_CFLAGS \
 $LDFLAGS"
 
@@ -99,11 +119,40 @@ export AUTOCONF_FLAGS="\
 --enable-debug-extensions \
 --enable-cassert"
 
+LD_PRELOAD="$LD_PRELOAD:$ASAN_SO_PATH" && \
+LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(dirname $ASAN_SO_PATH)" && \
 ./configure $AUTOCONF_FLAGS --prefix="$PREFIX"
 }
 
+main() {
+if [ "$CC" == "" -o "$CXX" == "" -o "$LD" == "" -o "$ASAN_LOG_PATH" == "" ]; then
+    echo "ERROR: Some of the required variables were not set."
+    echo "Please modify this script first before running it!"
+    return 1
+fi
+
+if [ "$CLANG" == 1 ]; then
+    SHARED_LIBASAN="-shared-libasan"
+    ASAN_SO="libclang_rt.asan-x86_64.so"
+else
+    SHARED_LIBASAN=""
+    ASAN_SO="libasan.so"
+fi
+
+ASAN_SO_PATH=`realpath $($CC -print-file-name=$ASAN_SO)`
+
+# Add LLVM lib directory to PATH to get rid of dumb problems.
+if [ "$CLANG" == 1 ]; then
+    CLANG_LIB=`dirname $ASAN_SO_PATH`
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$CLANG_LIB"
+fi
+
+# BASH_SOURCE is empty if the script was executed instead of being sourced.
 if [ "$0" != "$BASH_SOURCE" ]; then
     sourced
 else
     executed
 fi
+}
+
+main
