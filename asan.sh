@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -e
-
 # Variables to be modified manually. A note on this is in README.md.
 CC=""
 CXX=""
@@ -9,20 +7,61 @@ LD=""
 ASAN_LOG_PATH=""
 
 # Globals which shouldn't be modified.
-CLANG=0
 ASAN_SO=""
 ASAN_SO_PATH=""
 SHARED_LIBASAN=""
 
-case "$CC" in clang*)
-    CLANG=1
-esac
+# Modify greenplum_path.sh generation script to set ASAN_OPTIONS and LD_PRELOAD.
+# gpssh sources greenplum_path.sh every command.
+setup() {
+GEN_PATH="./gpMgmt/bin/generate-greenplum-path.sh"
+
+echo >> "$GEN_PATH"
+echo "echo" >> "$GEN_PATH"
+
+CUSTOM_ASAN_OPTIONS="log_path=$ASAN_LOG_PATH:halt_on_error=0"
+echo "Please put the following line into your /etc/bash.bashrc:"
+echo "echo \"export ASAN_OPTIONS=$CUSTOM_ASAN_OPTIONS\""
+echo -n "Enter to continue."
+read _
+
+CUSTOM_LD_PRELOAD="\$LD_PRELOAD:$ASAN_SO_PATH"
+echo "echo \"export LD_PRELOAD=$CUSTOM_LD_PRELOAD\"" >> "$GEN_PATH"
+
+# Apply patch to avoid hanging.
+cat <<EOF | git apply -
+diff --git a/gpMgmt/bin/gppylib/commands/base.py b/gpMgmt/bin/gppylib/commands/base.py
+index 138ffc679c7..6b73dd69020 100755
+--- a/gpMgmt/bin/gppylib/commands/base.py
++++ b/gpMgmt/bin/gppylib/commands/base.py
+@@ -448,8 +448,14 @@ class LocalExecutionContext(ExecutionContext):
+         for k in keys:
+             cmd.cmdStr = "%s=%s && %s" % (k, cmd.propagate_env_map[k], cmd.cmdStr)
+
++        # ps and pgrep hang due to us screwing with LD_PRELOAD, this is a
++        # hack to avoid glibc locales exploding
++        cmd.cmdStr = cmd.cmdStr.replace("ps -ef", "unset LD_PRELOAD; ps -ef")
++        cmd.cmdStr = cmd.cmdStr.replace("pgrep", "unset LD_PRELOAD; pgrep")
++
+         # executable='/bin/bash' is to ensure the shell is bash.  bash isn't the
+         # actual command executed, but the shell that command string runs under.
++        print "running local command: '%s'" % cmd.cmdStr
+         self.proc = gpsubprocess.Popen(cmd.cmdStr, env=None, shell=True,
+                                        executable='/bin/bash',
+                                        stdin=subprocess.PIPE,
+EOF
+}
 
 sourced() {
 GPSRC=`realpath $(dirname $BASH_SOURCE)`
 
 if ! [ -f "$GPSRC/GPHOME" ]; then
     echo "GPHOME does not exist. Please run this script before sourcing it."
+    return 1
+fi
+
+if [ "$ASAN_OPTIONS" == "" ]; then
+    echo "ERROR: \$ASAN_OPTIONS is not set! Please delete ./GPHOME and rerun this script."
     return 1
 fi
 
@@ -53,20 +92,8 @@ else
 fi
 
 # ./GPHOME does not exist if the script was run for the first time.
-#
-# Modify greenplum_path.sh generation script to set ASAN_OPTIONS and LD_PRELOAD.
-# gpssh sources greenplum_path.sh every command.
 if ! [ -f "./GPHOME" ]; then
-    GEN_PATH="./gpMgmt/bin/generate-greenplum-path.sh"
-
-    echo "" >> "$GEN_PATH"
-    echo "echo ''" >> "$GEN_PATH"
-
-    _ASAN_OPTIONS="log_path='$ASAN_LOG_PATH':halt_on_error=0"
-    echo "echo \"export ASAN_OPTIONS=$_ASAN_OPTIONS\"" >> "$GEN_PATH"
-
-    _LD_PRELOAD="\$LD_PRELOAD:$_ASAN_SO_PATH"
-    echo "echo \"export LD_PRELOAD=$_LD_PRELOAD\"" >> "$GEN_PATH"
+    setup
 fi
 
 # Save the GPHOME variable.
@@ -107,8 +134,6 @@ DEBUG_DEFS="\
 echo -n "PREFIX='$PREFIX'. Enter to continue."
 read _
 
-set +xe
-
 export CFLAGS="\
 $DEBUG_DEFS \
 $COMMON_CFLAGS \
@@ -135,10 +160,10 @@ if [ "$CC" == "" -o "$CXX" == "" -o "$LD" == "" -o "$ASAN_LOG_PATH" == "" ]; the
     return 1
 fi
 
-if [ "$CLANG" == 1 ]; then
+case "$CC" in clang*)
     echo "ERROR: Clang is not supported."
     return 1
-fi
+esac
 
 ASAN_SO="libasan.so"
 ASAN_SO_PATH=`realpath $($CC -print-file-name=$ASAN_SO)`

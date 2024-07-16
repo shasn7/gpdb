@@ -448,14 +448,8 @@ class LocalExecutionContext(ExecutionContext):
         for k in keys:
             cmd.cmdStr = "%s=%s && %s" % (k, cmd.propagate_env_map[k], cmd.cmdStr)
 
-        # ps and pgrep hang due to us screwing with LD_PRELOAD, this is a
-        # hack to avoid glibc locales exploding
-        cmd.cmdStr = cmd.cmdStr.replace("ps -ef", "unset LD_PRELOAD; ps -ef")
-        cmd.cmdStr = cmd.cmdStr.replace("pgrep", "unset LD_PRELOAD; pgrep")
-
         # executable='/bin/bash' is to ensure the shell is bash.  bash isn't the
         # actual command executed, but the shell that command string runs under.
-        print "running local command: '%s'" % cmd.cmdStr
         self.proc = gpsubprocess.Popen(cmd.cmdStr, env=None, shell=True,
                                        executable='/bin/bash',
                                        stdin=subprocess.PIPE,
