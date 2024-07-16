@@ -20,6 +20,12 @@ esac
 
 sourced() {
 GPSRC=`realpath $(dirname $BASH_SOURCE)`
+
+if ! [ -f "$GPSRC/GPHOME" ]; then
+    echo "GPHOME does not exist. Please run this script before sourcing it."
+    return 1
+fi
+
 GPHOME=`cat "$GPSRC/GPHOME"`
 
 export DATADIRS="$GPSRC/gpAux/gpdemo/datadirs"
