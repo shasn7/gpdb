@@ -2,7 +2,8 @@
 
 This fork contains helper files to allow building GPDB with Address Sanitizer.
 
-Currently, only GCC 12.2 was tested.
+Currently, only GCC 12.2 was tested. Clang says
+https://github.com/google/sanitizers/issues/837 :C.
 
 > [!NOTE]
 > GPDB and this repository do not support shells other than Bash.

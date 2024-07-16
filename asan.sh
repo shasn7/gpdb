@@ -119,8 +119,6 @@ export AUTOCONF_FLAGS="\
 --enable-debug-extensions \
 --enable-cassert"
 
-LD_PRELOAD="$LD_PRELOAD:$ASAN_SO_PATH" && \
-LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$(dirname $ASAN_SO_PATH)" && \
 ./configure $AUTOCONF_FLAGS --prefix="$PREFIX"
 }
 
@@ -132,20 +130,12 @@ if [ "$CC" == "" -o "$CXX" == "" -o "$LD" == "" -o "$ASAN_LOG_PATH" == "" ]; the
 fi
 
 if [ "$CLANG" == 1 ]; then
-    SHARED_LIBASAN="-shared-libasan"
-    ASAN_SO="libclang_rt.asan-x86_64.so"
-else
-    SHARED_LIBASAN=""
-    ASAN_SO="libasan.so"
+    echo "ERROR: Clang is not supported."
+    return 1
 fi
 
+ASAN_SO="libasan.so"
 ASAN_SO_PATH=`realpath $($CC -print-file-name=$ASAN_SO)`
-
-# Add LLVM lib directory to PATH to get rid of dumb problems.
-if [ "$CLANG" == 1 ]; then
-    CLANG_LIB=`dirname $ASAN_SO_PATH`
-    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$CLANG_LIB"
-fi
 
 # BASH_SOURCE is empty if the script was executed instead of being sourced.
 if [ "$0" != "$BASH_SOURCE" ]; then
