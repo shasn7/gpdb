@@ -9,7 +9,6 @@ ASAN_LOG_PATH=""
 # Globals which shouldn't be modified.
 ASAN_SO=""
 ASAN_SO_PATH=""
-SHARED_LIBASAN=""
 
 # Modify greenplum_path.sh generation script to set ASAN_OPTIONS and LD_PRELOAD.
 # gpssh sources greenplum_path.sh every command.
@@ -20,16 +19,13 @@ echo >> "$GEN_PATH"
 echo "echo" >> "$GEN_PATH"
 
 CUSTOM_ASAN_OPTIONS="log_path=$ASAN_LOG_PATH:halt_on_error=0"
-echo "Please put the following line into your /etc/bash.bashrc:"
-echo "echo \"export ASAN_OPTIONS=$CUSTOM_ASAN_OPTIONS\""
-echo -n "Enter to continue."
-read _
+echo "echo \"export ASAN_OPTIONS=$CUSTOM_ASAN_OPTIONS\"" >> "$GEN_PATH"
 
 CUSTOM_LD_PRELOAD="\$LD_PRELOAD:$ASAN_SO_PATH"
 echo "echo \"export LD_PRELOAD=$CUSTOM_LD_PRELOAD\"" >> "$GEN_PATH"
 
-# Apply patch to avoid hanging.
-cat <<EOF | git apply -
+# Apply patch to avoid hanging and setting system-wide LD_PRELOAD.
+cat <<EOF | git apply --verbose -
 diff --git a/gpMgmt/bin/gppylib/commands/base.py b/gpMgmt/bin/gppylib/commands/base.py
 index 138ffc679c7..6b73dd69020 100755
 --- a/gpMgmt/bin/gppylib/commands/base.py
@@ -49,6 +45,20 @@ index 138ffc679c7..6b73dd69020 100755
          self.proc = gpsubprocess.Popen(cmd.cmdStr, env=None, shell=True,
                                         executable='/bin/bash',
                                         stdin=subprocess.PIPE,
+diff --git a/gpMgmt/bin/lib/gpcreateseg.sh b/gpMgmt/bin/lib/gpcreateseg.sh
+index 47d74c7769a..ed6316596f1 100755
+--- a/gpMgmt/bin/lib/gpcreateseg.sh
++++ b/gpMgmt/bin/lib/gpcreateseg.sh
+@@ -94,7 +94,8 @@ CREATE_QES_PRIMARY () {
+     LOG_MSG "[INFO][\$INST_COUNT]:-Start Function \$FUNCNAME"
+     LOG_MSG "[INFO][\$INST_COUNT]:-Processing segment \$GP_HOSTADDRESS"
+     # build initdb command, capturing output in \${GP_DIR}.initdb
+-    cmd="\$EXPORT_LIB_PATH;\$INITDB"
++    cmd=". \${GPHOME}/greenplum_path.sh;"
++    cmd="\$cmd \$EXPORT_LIB_PATH;\$INITDB"
+     cmd="\$cmd -E \$ENCODING"
+     cmd="\$cmd -D \$GP_DIR"
+     cmd="\$cmd --locale=\$LOCALE_SETTING"
 EOF
 }
 
@@ -57,11 +67,6 @@ GPSRC=`realpath $(dirname $BASH_SOURCE)`
 
 if ! [ -f "$GPSRC/GPHOME" ]; then
     echo "GPHOME does not exist. Please run this script before sourcing it."
-    return 1
-fi
-
-if [ "$ASAN_OPTIONS" == "" ]; then
-    echo "ERROR: \$ASAN_OPTIONS is not set! Please delete ./GPHOME and rerun this script."
     return 1
 fi
 
@@ -98,6 +103,7 @@ fi
 
 # Save the GPHOME variable.
 echo `realpath "$PREFIX"` > "./GPHOME"
+echo "Saved '$PREFIX' to ./GPHOME"
 
 COMMON_CFLAGS="\
 -O0 \
@@ -138,7 +144,6 @@ export CFLAGS="\
 $DEBUG_DEFS \
 $COMMON_CFLAGS \
 $ASAN_CFLAGS \
-$SHARED_LIBASAN \
 $ERROR_CFLAGS \
 $LDFLAGS"
 
