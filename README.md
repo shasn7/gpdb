@@ -5,6 +5,51 @@
 
 ![Greenplum](logo-greenplum.svg)
 
+## What's this
+
+This fork contains helper files to allow building GPDB 7 with Address Sanitizer.
+
+Currently, only GCC 12.2 was tested. Clang says
+https://github.com/google/sanitizers/issues/837 :c
+
+> [!NOTE]
+> This repository does not support shells other than Bash and compilers other
+> than GCC.
+
+`asan.sh` script has everything ready. It's intended to replace both
+`greenplum_path.sh` and `configure`: if it's executed, it will run `./configure`
+for you with needed flags and save the `GPHOME` environment variable into a file
+with the same name. If `asan.sh` was sourced, it will act as a tweaked
+`greenplum_path.sh`, with `DATADIRS` will be equal to `gpAux/gpdemo/datadirs` as
+in `gpAux/gpdemo`.
+
+Before using `asan.sh`, you will need to overwrite log file path and compiler
+for the sanitizer in the beginning of the file. An example of edited variables
+could look like this:
+```sh
+CC="gcc"
+CXX="g++"
+LD="mold"
+ASAN_LOG_PATH="/home/sd/Work/asan-logs/asan.log"
+```
+
+The script will modify some files that will be visible in the diff to be
+available for revert later. To fully reset the state, delete the `./GPHOME` file
+as well.
+
+## Quick start
+
+```sh
+$ vim asan.sh
+$ ./asan.sh
+$ make -j`nproc` install
+$ . ./asan.sh
+$ WITH_MIRRORS=false WITH_STANDBY=false NUM_PRIMARY_MIRROR_PAIRS=3 make create-demo-cluster
+$ psql postgres
+```
+
+---
+
 Greenplum Database (GPDB) is an advanced, fully featured, open
 source data warehouse, based on PostgreSQL. It provides powerful and rapid analytics on
 petabyte scale data volumes. Uniquely geared toward big data
