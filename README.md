@@ -28,6 +28,9 @@ LD="mold"
 ASAN_LOG_PATH="/home/sd/Work/asan-logs/asan.log"
 ```
 
+After sourcing the script, `show_asan_errors` function can be called to show all
+errors from created files.
+
 The script will modify some files that will be visible in the diff to be
 available for revert later. To fully reset the state, delete the `./GPHOME` file
 as well.
