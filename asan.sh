@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 # Variables to be modified manually. A note on this is in README.md.
-CC="gcc"
-CXX="g++"
-LD="mold"
-ASAN_LOG_PATH="/home/sd/Work/asan-logs/asan.log"
+CC=""
+CXX=""
+LD=""
+ASAN_LOG_PATH=""
 
 # Globals which shouldn't be modified.
 ASAN_SO=""
