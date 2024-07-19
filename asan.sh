@@ -25,6 +25,7 @@ setup() {
     echo "echo \"export LD_PRELOAD=$CUSTOM_LD_PRELOAD\"" >> "$GEN_PATH"
 
     # Apply patch to avoid hanging and setting system-wide LD_PRELOAD.
+    # Also: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71962.
     cat <<EOF | git apply --verbose -
 diff --git a/gpMgmt/bin/gppylib/commands/base.py b/gpMgmt/bin/gppylib/commands/base.py
 index 138ffc679c7..6b73dd69020 100755
@@ -150,16 +151,8 @@ executed() {
     ERROR_CFLAGS="\
 -Wno-error=uninitialized \
 -Wno-error=maybe-uninitialized \
--Wno-error=deprecated-copy \
 -Wno-error=nonnull-compare \
 -Wno-error=implicit-function-declaration"
-
-    LDFLAGS="\
--fPIC \
--fPIE \
--ldl \
--lasan \
--Wl,--no-as-needed"
 
     DEBUG_DEFS="\
 -DEXTRA_DYNAMIC_MEMORY_DEBUG \
@@ -172,17 +165,19 @@ executed() {
 $DEBUG_DEFS \
 $COMMON_CFLAGS \
 $ASAN_CFLAGS \
-$ERROR_CFLAGS \
-$LDFLAGS"
+$ERROR_CFLAGS"
 
-    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71962
+    export LDFLAGS="\
+$ASAN_CFLAGS \
+-fPIE \
+-fPIC \
+-ldl \
+-lasan \
+-Wl,--no-as-needed"
+
     export CXXFLAGS="\
--fsanitize=address \
--fsanitize=undefined \
--fsanitize-recover=address \
--fuse-ld=$LD \
--g3 \
--O0"
+$COMMON_CFLAGS \
+$ASAN_CFLAGS"
 
     export AUTOCONF_FLAGS="\
 --with-python \
