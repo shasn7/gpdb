@@ -127,7 +127,6 @@ executed() {
 -fsanitize=undefined \
 -fsanitize-recover=address \
 -fno-omit-frame-pointer \
--fPIC \
 -Wl,--no-as-needed"
 
     ERROR_CFLAGS="\
@@ -136,14 +135,6 @@ executed() {
 -Wno-error=deprecated-copy \
 -Wno-error=nonnull-compare \
 -Wno-error=implicit-function-declaration"
-
-    LDFLAGS="\
--fsanitize=address \
--fsanitize-recover=address \
--fPIE \
--ldl \
--lasan \
--Wl,--no-as-needed"
 
     DEBUG_DEFS="\
 -DEXTRA_DYNAMIC_MEMORY_DEBUG \
@@ -156,8 +147,17 @@ executed() {
 $DEBUG_DEFS \
 $COMMON_CFLAGS \
 $ASAN_CFLAGS \
-$ERROR_CFLAGS \
-$LDFLAGS"
+$ERROR_CFLAGS"
+
+    export LDFLAGS="\
+-fsanitize=address \
+-fsanitize=undefined \
+-fsanitize-recover=address \
+-fPIE \
+-fPIC \
+-ldl \
+-lasan \
+-Wl,--no-as-needed"
 
     export AUTOCONF_FLAGS="\
 --with-python \
