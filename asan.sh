@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
 # Variables to be modified manually. A note on this is in README.md.
-CC=""
-CXX=""
-LD=""
-ASAN_LOG_PATH=""
+LD="mold"
+ASAN_LOG_PATH="/home/sd/Work/Asan/asan.log"
 
 # Globals which shouldn't be modified.
+CC="gcc"
+CXX="g++"
+
 ASAN_SO=""
 ASAN_SO_PATH=""
 
@@ -66,7 +67,7 @@ sourced() {
     GPSRC=`realpath $(dirname $BASH_SOURCE)`
 
     if ! [ -f "$GPSRC/GPHOME" ]; then
-        echo "GPHOME does not exist. Please run this script before sourcing it."
+        echo "./GPHOME file does not exist. Please run this script before sourcing it."
         return 1
     fi
 
@@ -119,8 +120,7 @@ executed() {
 
     COMMON_CFLAGS="\
 -O0 \
--g3 \
--fuse-ld=$LD"
+-g3"
 
     ASAN_CFLAGS="\
 -fsanitize=address \
@@ -143,27 +143,34 @@ executed() {
     echo -n "PREFIX='$PREFIX'. Enter to continue."
     read _
 
-    export CFLAGS="\
-$DEBUG_DEFS \
-$COMMON_CFLAGS \
-$ASAN_CFLAGS \
-$ERROR_CFLAGS"
-
-    export LDFLAGS="\
--fsanitize=address \
--fsanitize=undefined \
--fsanitize-recover=address \
+    export LDFLAGS="
+$ASAN_CFLAGS
 -fPIE \
 -fPIC \
 -ldl \
 -lasan \
+-fuse-ld=$LD
 -Wl,--no-as-needed"
 
+    export CFLAGS="\
+$DEBUG_DEFS \
+$COMMON_CFLAGS \
+$ERROR_CFLAGS \
+$LDFLAGS"
+
+    export CXXFLAGS="\
+$ERROR_CFLAGS \
+$LDFLAGS"
+
     export AUTOCONF_FLAGS="\
+--with-perl \
 --with-python \
 --with-pythonsrc-ext \
 --enable-depend \
 --with-libxml \
+--enable-mapreduce \
+--enable-orafce \
+--with-openssl \
 --enable-debug-extensions \
 --enable-cassert"
 
