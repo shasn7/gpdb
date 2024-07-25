@@ -4,38 +4,6 @@
 create schema rpt;
 set search_path to rpt;
 
--- If the producer is replicated, request a non-singleton spec
--- that is not allowed to be enforced, to avoid potential CTE hang issue
-drop table if exists with_test1 cascade;
-create table with_test1 (i character varying(10)) DISTRIBUTED REPLICATED;
-
-explain
-WITH cte1 AS ( SELECT *,ROW_NUMBER() OVER ( PARTITION BY i) AS RANK_DESC FROM with_test1),
- cte2 AS ( SELECT 'COL1' TBLNM,COUNT(*) DIFFCNT FROM ( SELECT * FROM cte1) X)
-select * FROM ( SELECT 'COL1' TBLNM FROM cte1) A LEFT JOIN cte2 C ON A.TBLNM=C.TBLNM;
-
-WITH cte1 AS ( SELECT *,ROW_NUMBER() OVER ( PARTITION BY i) AS RANK_DESC FROM with_test1),
-     cte2 AS ( SELECT 'COL1' TBLNM,COUNT(*) DIFFCNT FROM ( SELECT * FROM cte1) X)
-select * FROM ( SELECT 'COL1' TBLNM FROM cte1) A LEFT JOIN cte2 C ON A.TBLNM=C.TBLNM;
-
--- This is expected to fall back to planner.
-drop table if exists with_test2 cascade;
-drop table if exists with_test3 cascade;
-create table with_test2 (id bigserial NOT NULL, isc varchar(15) NOT NULL,iscd varchar(15) NULL) DISTRIBUTED REPLICATED;
-create table with_test3 (id numeric NULL, rc varchar(255) NULL,ri numeric NULL) DISTRIBUTED REPLICATED;
-insert into with_test2 (isc,iscd) values ('CMN_BIN_YES', 'CMN_BIN_YES');
-insert into with_test3 (id,rc,ri) values (113551,'CMN_BIN_YES',101991), (113552,'CMN_BIN_NO',101991), (113553,'CMN_BIN_ERR',101991), (113554,'CMN_BIN_NULL',101991);
-explain
-WITH
-      t1 AS (SELECT * FROM with_test2),
-      t2 AS (SELECT id, rc FROM with_test3 WHERE ri = 101991)
-SELECT p.*FROM t1 p JOIN t2 r ON p.isc = r.rc JOIN t2 r1 ON p.iscd = r1.rc LIMIT 1;
-
-WITH
-    t1 AS (SELECT * FROM with_test2),
-    t2 AS (SELECT id, rc FROM with_test3 WHERE ri = 101991)
-SELECT p.*FROM t1 p JOIN t2 r ON p.isc = r.rc JOIN t2 r1 ON p.iscd = r1.rc LIMIT 1;
-
 ---------
 -- INSERT
 ---------
@@ -632,6 +600,36 @@ drop table if exists t;
 drop table if exists t1;
 drop table if exists t2;
 drop function if exists f(i int);
+
+-- Check that query containing 2 CTEs and replicated table can be optimized by ORCA
+-- and it's execution does not produce problems like unconsumed producers or starved consumers
+
+-- start_ignore
+drop table if exists tbl2;
+drop table if exists tbl1;
+-- end_ignore
+
+create table tbl2 (a numeric, b varchar(255), c numeric) distributed replicated;
+create table tbl1 (a bigserial, b varchar(15), c varchar(15)) distributed replicated;
+
+explain (analyze off, costs off, verbose off)
+with
+t1 as (select * from tbl1),
+t2 as (select a, b from tbl2)
+ select * from t1 p
+  join t2 r on p.b = r.b
+  join t2 r1 on p.c = r1.b;
+
+insert into tbl1 values(1,2,3);
+insert into tbl2 values(1,2,3);
+insert into tbl2 values(2,3,4);
+
+with
+t1 as (select * from tbl1),
+t2 as (select a, b from tbl2)
+ select * from t1 p
+  join t2 r on p.b = r.b
+  join t2 r1 on p.c = r1.b;
 
 -- start_ignore
 drop schema rpt cascade;

@@ -360,14 +360,8 @@ CTranslatorDXLToPlStmt::TranslateDXLOperatorToPlan(
 void
 CTranslatorDXLToPlStmt::SetSubPlanVariables(PlannedStmt *planned_stmt)
 {
-	if (1 !=
-		m_dxl_to_plstmt_context
-			->GetCurrentMotionId())	 // For Distributed Tables m_ulMotionId > 1
-	{
-		planned_stmt->nInitPlans = m_dxl_to_plstmt_context->GetCurrentParamId();
-		planned_stmt->planTree->nInitPlans =
-			m_dxl_to_plstmt_context->GetCurrentParamId();
-	}
+	planned_stmt->nInitPlans = 0;			 // Orca does not produce initplans
+	planned_stmt->planTree->nInitPlans = 0;	 // Orca does not produce initplans
 
 	planned_stmt->nParamExec = m_dxl_to_plstmt_context->GetCurrentParamId();
 
@@ -4115,6 +4109,7 @@ CTranslatorDXLToPlStmt::TranslateDXLDml(
 
 	// create DML node
 	DML *dml = MakeNode(DML);
+	dml->canSetTag = true;
 	Plan *plan = &(dml->plan);
 	AclMode acl_mode = ACL_NO_RIGHTS;
 

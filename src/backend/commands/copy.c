@@ -231,7 +231,7 @@ static GpDistributionData *GetDistributionPolicyForPartition(GpDistributionData 
 															 MemoryContext context);
 static unsigned int
 GetTargetSeg(GpDistributionData *distData, Datum *baseValues, bool *baseNulls);
-static ProgramPipes *open_program_pipes(char *command, bool forwrite);
+static ProgramPipes *open_program_pipes(CopyState cstate, bool forwrite);
 static void close_program_pipes(CopyState cstate, bool ifThrow);
 static void cdbFlushInsertBatches(List *resultRels,
 					  CopyState cstate,
@@ -2258,7 +2258,7 @@ BeginCopyToOnSegment(QueryDesc *queryDesc)
 
 	if (cstate->is_program)
 	{
-		cstate->program_pipes = open_program_pipes(cstate->filename, true);
+		cstate->program_pipes = open_program_pipes(cstate, true);
 		cstate->copy_file = fdopen(cstate->program_pipes->pipes[0], PG_BINARY_W);
 
 		if (cstate->copy_file == NULL)
@@ -2494,7 +2494,7 @@ BeginCopyTo(Relation rel,
 
 		if (is_program)
 		{
-			cstate->program_pipes = open_program_pipes(cstate->filename, true);
+			cstate->program_pipes = open_program_pipes(cstate, true);
 			cstate->copy_file = fdopen(cstate->program_pipes->pipes[0], PG_BINARY_W);
 
 			if (cstate->copy_file == NULL)
@@ -3569,6 +3569,12 @@ CopyFrom(CopyState cstate)
 					 errmsg("cannot copy to non-table relation \"%s\"",
 							RelationGetRelationName(cstate->rel))));
 	}
+
+	if (rel_part_status(cstate->rel->rd_id) == PART_STATUS_INTERIOR)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot copy to intermediate part of a partitioned table"),
+				 errhint("consider using COPY to either the root or a leaf partition instead.")));
 
 	if (Gp_role == GP_ROLE_UTILITY && rel_is_parent(cstate->rel->rd_id))
 		ereport(ERROR,
@@ -4699,7 +4705,7 @@ BeginCopyFrom(Relation rel,
 
 		if (cstate->is_program)
 		{
-			cstate->program_pipes = open_program_pipes(cstate->filename, false);
+			cstate->program_pipes = open_program_pipes(cstate, false);
 			cstate->copy_file = fdopen(cstate->program_pipes->pipes[0], PG_BINARY_R);
 			if (cstate->copy_file == NULL)
 				ereport(ERROR,
@@ -7955,9 +7961,21 @@ GetTargetSeg(GpDistributionData *distData, Datum *baseValues, bool *baseNulls)
 	return target_seg;
 }
 
-static ProgramPipes*
-open_program_pipes(char *command, bool forwrite)
+static void
+close_program_pipes_on_reset(void *arg)
 {
+	if (!IsAbortInProgress())
+		return;
+
+	CopyState	cstate = arg;
+
+	close_program_pipes(cstate, false);
+}
+
+static ProgramPipes*
+open_program_pipes(CopyState cstate, bool forwrite)
+{
+	char	   *command = cstate->filename;
 	int save_errno;
 	pqsigfunc save_SIGPIPE;
 	/* set up extvar */
@@ -7995,6 +8013,12 @@ open_program_pipes(char *command, bool forwrite)
 				 errmsg("can not start command: %s", command)));
 	}
 
+	MemoryContextCallback *callback = MemoryContextAlloc(cstate->copycontext, sizeof(MemoryContextCallback));
+
+	callback->arg = cstate;
+	callback->func = close_program_pipes_on_reset;
+	MemoryContextRegisterResetCallback(cstate->copycontext, callback);
+
 	return program_pipes;
 }
 
@@ -8004,8 +8028,7 @@ close_program_pipes(CopyState cstate, bool ifThrow)
 	Assert(cstate->is_program);
 
 	int ret = 0;
-	StringInfoData sinfo;
-	initStringInfo(&sinfo);
+	StringInfoData sinfo = {0};
 
 	if (cstate->copy_file)
 	{
@@ -8018,8 +8041,11 @@ close_program_pipes(CopyState cstate, bool ifThrow)
 	{
 		return;
 	}
-	
+
+	if (ifThrow)
+		initStringInfo(&sinfo);
 	ret = pclose_with_stderr(cstate->program_pipes->pid, cstate->program_pipes->pipes, &sinfo);
+	cstate->program_pipes = NULL;
 
 	if (ret == 0 || !ifThrow)
 	{
