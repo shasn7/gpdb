@@ -434,9 +434,7 @@ CExpression::AssertValidPropDerivation(const CDrvdProp::EPropType ept)
 void
 CExpression::SetMotionInputSegmentsNumberForChildren() const
 {
-	const ULONG arity = Arity();
-
-	for (ULONG ul = 0; ul < arity; ul++)
+	for (ULONG ul = 0; ul < Arity(); ul++)
 	{
 		CExpression *pexprChild = (*m_pdrgpexpr)[ul];
 		if (!CUtils::FPhysicalMotion(pexprChild->Pop()))
