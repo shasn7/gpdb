@@ -27,14 +27,12 @@ Before using `asan.sh`, you will need to overwrite log file path and compiler
 for the sanitizer in the beginning of the file. An example of edited variables
 could look like this:
 ```sh
-CC="gcc"
-CXX="g++"
 LD="mold"
 ASAN_LOG_PATH="/home/sd/Work/asan-logs/asan.log"
 ```
 
-After sourcing the script, `show_asan_errors` function can be called to show all
-errors from created files.
+After sourcing the script, `show_asan_errors` function can be called to filter
+and print all relevant errors from sanitizer's log files.
 
 The script will modify some files that will be visible in the diff to be
 available for revert later. To fully reset the state, delete the `./GPHOME` file
@@ -49,6 +47,13 @@ $ make -j`nproc` install
 $ . ./asan.sh
 $ WITH_MIRRORS=false WITH_STANDBY=false NUM_PRIMARY_MIRROR_PAIRS=3 make create-demo-cluster
 $ psql postgres
+```
+
+To reset:
+```sh
+$ unset LD_PRELOAD
+$ make -j`nproc` clean
+$ rm ./GPHOME
 ```
 
 ---

@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
 # Variables to be modified manually. A note on this is in README.md.
-CC=""
-CXX=""
 LD=""
 ASAN_LOG_PATH=""
 
 # Globals which shouldn't be modified.
+CC="gcc"
+CXX="g++"
+
 ASAN_SO=""
 ASAN_SO_PATH=""
 
@@ -83,7 +84,7 @@ sourced() {
     GPSRC=`realpath $(dirname $BASH_SOURCE)`
 
     if ! [ -f "$GPSRC/GPHOME" ]; then
-        echo "GPHOME does not exist. Please run this script before sourcing it."
+        echo "./GPHOME file does not exist. Please run this script before sourcing it."
         return 1
     fi
 
@@ -161,12 +162,6 @@ executed() {
     echo -n "PREFIX='$PREFIX'. Enter to continue."
     read _
 
-    export CFLAGS="\
-$DEBUG_DEFS \
-$COMMON_CFLAGS \
-$ASAN_CFLAGS \
-$ERROR_CFLAGS"
-
     export LDFLAGS="\
 $ASAN_CFLAGS \
 -fPIE \
@@ -175,16 +170,30 @@ $ASAN_CFLAGS \
 -lasan \
 -Wl,--no-as-needed"
 
+    export CFLAGS="\
+$DEBUG_DEFS \
+$COMMON_CFLAGS \
+$ERROR_CFLAGS \
+$LDFLAGS"
+
     export CXXFLAGS="\
 $COMMON_CFLAGS \
-$ASAN_CFLAGS"
+$ASAN_CFLAGS \
+$LDFLAGS"
 
     export AUTOCONF_FLAGS="\
 --with-python \
 --enable-depend \
---with-libxml \
 --enable-debug-extensions \
---enable-cassert"
+--enable-cassert \
+--enable-gpcloud \
+--enable-orafce \
+--enable-tap-tests \
+--with-libxml \
+--with-openssl \
+--with-zstd \
+--with-llvm \
+--with-perl"
 
     ./configure $AUTOCONF_FLAGS --prefix="$PREFIX"
 }
