@@ -636,7 +636,7 @@ with v as (select * from t1) select  row_number() over(partition by v1.b), rank(
                 </dxl:CTEConsumer>
                 <dxl:Materialize Eager="true">
                   <dxl:Properties>
-                    <dxl:Cost StartupCost="0" TotalCost="434.768456" Rows="1000.000000" Width="8"/>
+                    <dxl:Cost StartupCost="0" TotalCost="431.027280" Rows="1000.000000" Width="8"/>
                   </dxl:Properties>
                   <dxl:ProjList>
                     <dxl:ProjElem ColId="18" Alias="a">
