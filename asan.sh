@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Variables to be modified manually. A note on this is in README.md.
-LD="mold"
-ASAN_LOG_PATH="/home/sd/Work/Asan/asan.log"
+LD=""
+ASAN_LOG_PATH=""
 
 # Globals which shouldn't be modified.
 CC="gcc"
@@ -144,12 +144,12 @@ executed() {
     read _
 
     export LDFLAGS="
-$ASAN_CFLAGS
+$ASAN_CFLAGS \
 -fPIE \
 -fPIC \
 -ldl \
 -lasan \
--fuse-ld=$LD
+-fuse-ld=$LD \
 -Wl,--no-as-needed"
 
     export CFLAGS="\
