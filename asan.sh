@@ -143,7 +143,7 @@ executed() {
     echo -n "PREFIX='$PREFIX'. Enter to continue."
     read _
 
-    export LDFLAGS="
+    export LDFLAGS="\
 $ASAN_CFLAGS \
 -fPIE \
 -fPIC \
