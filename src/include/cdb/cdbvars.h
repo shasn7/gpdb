@@ -208,6 +208,8 @@ extern bool verify_gpfdists_cert;
  */
 extern int gp_command_count;
 
+extern int gp_top_command_id;
+
 /*
  * Gp_write_shared_snapshot
  *

@@ -383,6 +383,11 @@ ProcessUtility(PlannedStmt *pstmt,
 	Assert(pstmt->commandType == CMD_UTILITY);
 	Assert(queryString != NULL);	/* required as of 8.4 */
 
+	int saved_command_id = MyProc->queryCommandId;
+
+	if (Gp_role != GP_ROLE_EXECUTE)
+		increment_command_count();
+
 	/*
 	 * Greenplum specific code:
 	 *   Please refer to the comments at the definition of process_utility_nesting_level.
@@ -411,6 +416,8 @@ ProcessUtility(PlannedStmt *pstmt,
 		PG_RE_THROW();
 	}
 	PG_END_TRY();
+
+	MyProc->queryCommandId = saved_command_id;
 }
 
 /*

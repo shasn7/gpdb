@@ -29,6 +29,7 @@
 #include "catalog/namespace.h" /* for GetTempNamespaceState() */
 #include "nodes/execnodes.h"
 #include "pgstat.h"
+#include "storage/proc.h"
 #include "tcop/tcopprot.h"
 #include "utils/datum.h"
 #include "utils/guc.h"
@@ -82,6 +83,7 @@ typedef struct DispatchCommandQueryParms
 	 */
 	const char *strCommand;
 	int			strCommandlen;
+	int			commandId;
 	char	   *serializedPlantree;
 	int			serializedPlantreelen;
 	char	   *serializedQueryDispatchDesc;
@@ -534,6 +536,7 @@ cdbdisp_buildCommandQueryParms(const char *strCommand, int flags)
 
 	pQueryParms = palloc0(sizeof(*pQueryParms));
 	pQueryParms->strCommand = strCommand;
+	pQueryParms->commandId = MyProc->queryCommandId;
 	pQueryParms->serializedQueryDispatchDesc = NULL;
 	pQueryParms->serializedQueryDispatchDesclen = 0;
 
@@ -605,6 +608,7 @@ cdbdisp_buildUtilityQueryParms(struct Node *stmt,
 
 	pQueryParms = palloc0(sizeof(*pQueryParms));
 	pQueryParms->strCommand = PointerIsValid(debug_query_string) ? debug_query_string : "";
+	pQueryParms->commandId = MyProc->queryCommandId;
 	pQueryParms->serializedPlantree = serializedPlantree;
 	pQueryParms->serializedPlantreelen = serializedPlantree_len;
 	pQueryParms->serializedQueryDispatchDesc = serializedQueryDispatchDesc;
@@ -664,6 +668,7 @@ cdbdisp_buildPlanQueryParms(struct QueryDesc *queryDesc,
 	sddesc = serializeNode((Node *) queryDesc->ddesc, &sddesc_len, NULL /* uncompressed_size */ );
 
 	pQueryParms->strCommand = queryDesc->sourceText;
+	pQueryParms->commandId = MyProc->queryCommandId;
 	pQueryParms->serializedPlantree = splan;
 	pQueryParms->serializedPlantreelen = splan_len;
 	pQueryParms->serializedQueryDispatchDesc = sddesc;
@@ -866,6 +871,7 @@ buildGpQueryString(DispatchCommandQueryParms *pQueryParms,
 	const char *dtxContextInfo = pQueryParms->serializedDtxContextInfo;
 	int			dtxContextInfo_len = pQueryParms->serializedDtxContextInfolen;
 	int64		currentStatementStartTimestamp = GetCurrentStatementStartTimestamp();
+	int			queryCommandId = pQueryParms->commandId;
 	Oid			sessionUserId = GetSessionUserId();
 	Oid			outerUserId = GetOuterUserId();
 	Oid			currentUserId = GetUserId();
@@ -909,6 +915,7 @@ buildGpQueryString(DispatchCommandQueryParms *pQueryParms,
 	total_query_len = 1 /* 'M' */ +
 		sizeof(len) /* message length */ +
 		sizeof(gp_command_count) +
+		sizeof(queryCommandId) +
 		sizeof(sessionUserId) /* sessionUserIsSuper */ +
 		sizeof(outerUserId) /* outerUserIsSuper */ +
 		sizeof(currentUserId) +
@@ -940,6 +947,10 @@ buildGpQueryString(DispatchCommandQueryParms *pQueryParms,
 	tmp = htonl(gp_command_count);
 	memcpy(pos, &tmp, sizeof(gp_command_count));
 	pos += sizeof(gp_command_count);
+
+	tmp = htonl(queryCommandId);
+	memcpy(pos, &tmp, sizeof(queryCommandId));
+	pos += sizeof(queryCommandId);
 
 	tmp = htonl(sessionUserId);
 	memcpy(pos, &tmp, sizeof(sessionUserId));

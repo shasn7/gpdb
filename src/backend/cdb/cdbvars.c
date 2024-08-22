@@ -63,6 +63,8 @@ int			qdPostmasterPort;	/* Master Segment Postmaster port. */
 
 int			gp_command_count;	/* num of commands from client */
 
+int			gp_top_command_id;
+
 bool		gp_debug_pgproc;	/* print debug info for PGPROC */
 bool		Debug_print_prelim_plan;	/* Shall we log plan before adding
 										 * Motions to subplans? */
