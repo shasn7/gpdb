@@ -216,6 +216,17 @@ typedef struct CopyDirectDispatchToSliceContext
 
 static bool CopyDirectDispatchFromPlanToSliceTableWalker( Node *node, CopyDirectDispatchToSliceContext *context);
 
+static void CommandIdPush(QueryDesc *qd)
+{
+	MyProc->queryCommandId = qd->command_id;
+}
+
+static void CommandIdPop(QueryDesc *qd)
+{
+	if (qd->parent_command_id != gp_top_command_id)
+		MyProc->queryCommandId = qd->parent_command_id;
+}
+
 static void
 CopyDirectDispatchToSlice( Plan *ddPlan, int sliceId, CopyDirectDispatchToSliceContext *context)
 {
@@ -296,10 +307,14 @@ CopyDirectDispatchFromPlanToSliceTable(PlannedStmt *stmt, EState *estate)
 void
 ExecutorStart(QueryDesc *queryDesc, int eflags)
 {
+	CommandIdPush(queryDesc);
+
 	if (ExecutorStart_hook)
 		(*ExecutorStart_hook) (queryDesc, eflags);
 	else
 		standard_ExecutorStart(queryDesc, eflags);
+
+	CommandIdPop(queryDesc);
 }
 
 void
@@ -985,11 +1000,15 @@ ExecutorRun(QueryDesc *queryDesc,
 	executor_run_nesting_level++;
 	PG_TRY();
 	{
+		CommandIdPush(queryDesc);
+
 		if (ExecutorRun_hook)
 			(*ExecutorRun_hook) (queryDesc, direction, count);
 		else
 			standard_ExecutorRun(queryDesc, direction, count);
 		executor_run_nesting_level--;
+
+		CommandIdPop(queryDesc);
 	}
 	PG_CATCH();
 	{
@@ -1250,10 +1269,14 @@ standard_ExecutorRun(QueryDesc *queryDesc,
 void
 ExecutorFinish(QueryDesc *queryDesc)
 {
+	CommandIdPush(queryDesc);
+
 	if (ExecutorFinish_hook)
 		(*ExecutorFinish_hook) (queryDesc);
 	else
 		standard_ExecutorFinish(queryDesc);
+
+	CommandIdPop(queryDesc);
 }
 
 void
@@ -1329,10 +1352,14 @@ standard_ExecutorFinish(QueryDesc *queryDesc)
 void
 ExecutorEnd(QueryDesc *queryDesc)
 {
+	CommandIdPush(queryDesc);
+
 	if (ExecutorEnd_hook)
 		(*ExecutorEnd_hook) (queryDesc);
 	else
 		standard_ExecutorEnd(queryDesc);
+
+	CommandIdPop(queryDesc);
 }
 
 void

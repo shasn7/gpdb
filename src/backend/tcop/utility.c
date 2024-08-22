@@ -362,6 +362,11 @@ ProcessUtility(Node *parsetree,
 {
 	Assert(queryString != NULL);	/* required as of 8.4 */
 
+	int saved_command_id = MyProc->queryCommandId;
+
+	if (Gp_role != GP_ROLE_EXECUTE)
+		increment_command_count();
+
 	/*
 	 * We provide a function hook variable that lets loadable plugins get
 	 * control when ProcessUtility is called.  Such a plugin would normally
@@ -375,6 +380,8 @@ ProcessUtility(Node *parsetree,
 		standard_ProcessUtility(parsetree, queryString,
 								context, params,
 								dest, completionTag);
+
+	MyProc->queryCommandId = saved_command_id;
 }
 
 /*

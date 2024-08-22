@@ -23,6 +23,7 @@
 #include "executor/tstoreReceiver.h"
 #include "miscadmin.h"
 #include "pg_trace.h"
+#include "storage/proc.h"
 #include "tcop/pquery.h"
 #include "tcop/utility.h"
 #include "utils/memutils.h"
@@ -116,9 +117,13 @@ CreateQueryDesc(PlannedStmt *plannedstmt,
 	qd->ddesc = NULL;
 	qd->gpmon_pkt = NULL;
 	qd->memoryAccountId = MEMORY_OWNER_TYPE_Undefined;
+
+	qd->parent_command_id = MyProc->queryCommandId;
 	
 	if (Gp_role != GP_ROLE_EXECUTE)
 		increment_command_count();
+
+	qd->command_id = MyProc->queryCommandId;
 
 	if(gp_enable_gpperfmon && Gp_role == GP_ROLE_DISPATCH)
 	{
