@@ -1461,12 +1461,10 @@ ExplainNode(PlanState *planstate, List *ancestors,
 							sname = "Broadcast Motion";
 
 							/*
-							 * Scale the number of rows by the number of
-							 * segments receiving data, because they were
-							 * multiplied by this number at the planning
-							 * stage. We don't use segments count because the
-							 * number of receivers can be less if we are
-							 * expanding a cluster.
+							 * We don't scale rows number anymore because orca now
+							 * propagates motion's segments number correctly. Previously,
+							 * orca multipled all rows under a motion by total segments
+							 * number unconditionally which resulted in incorrect values
 							 */
 						}
 						else if (plan->lefttree->flow->locustype == CdbLocusType_Replicated)
