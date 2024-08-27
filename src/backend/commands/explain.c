@@ -1215,7 +1215,6 @@ ExplainNode(PlanState *planstate, List *ancestors,
 	int			motion_snd;
 	float		scaleFactor = 1.0; /* we will divide planner estimates by this factor to produce
 									  per-segment estimates */
-	Slice		*parentSlice = NULL;
 
 	/* Remember who called us. */
 	parentplanstate = es->parentPlanState;
