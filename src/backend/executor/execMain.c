@@ -223,14 +223,16 @@ typedef struct CopyDirectDispatchToSliceContext
 
 static bool CopyDirectDispatchFromPlanToSliceTableWalker( Node *node, CopyDirectDispatchToSliceContext *context);
 
-static void CommandIdPush(QueryDesc *qd)
+static void CommandIdUpdate(QueryDesc *qd)
 {
-	MyProc->queryCommandId = qd->command_id;
+	if (Gp_role != GP_ROLE_EXECUTE)
+		MyProc->queryCommandId = qd->command_id;
 }
 
-static void CommandIdPop(QueryDesc *qd)
+static void CommandIdRestore(QueryDesc *qd)
 {
-	if (qd->parent_command_id != gp_top_command_id)
+	if (Gp_role != GP_ROLE_EXECUTE &&
+		qd->parent_command_id != gp_top_command_id)
 		MyProc->queryCommandId = qd->parent_command_id;
 }
 
@@ -314,7 +316,7 @@ CopyDirectDispatchFromPlanToSliceTable(PlannedStmt *stmt, EState *estate)
 void
 ExecutorStart(QueryDesc *queryDesc, int eflags)
 {
-	CommandIdPush(queryDesc);
+	CommandIdUpdate(queryDesc);
 
 #ifdef FAULT_INJECTOR
 	if (SIMPLE_FAULT_INJECTOR("track_query_command_id") == FaultInjectorTypeSkip ||
@@ -332,7 +334,7 @@ ExecutorStart(QueryDesc *queryDesc, int eflags)
 		QUERY_ID_LOG_EXEC("END", queryDesc);
 #endif
 
-	CommandIdPop(queryDesc);
+	CommandIdRestore(queryDesc);
 }
 
 void
@@ -1018,7 +1020,7 @@ ExecutorRun(QueryDesc *queryDesc,
 	executor_run_nesting_level++;
 	PG_TRY();
 	{
-		CommandIdPush(queryDesc);
+		CommandIdUpdate(queryDesc);
 
 #ifdef FAULT_INJECTOR
 		if (SIMPLE_FAULT_INJECTOR("track_query_command_id") == FaultInjectorTypeSkip)
@@ -1036,7 +1038,7 @@ ExecutorRun(QueryDesc *queryDesc,
 			QUERY_ID_LOG_EXEC("END", queryDesc);
 #endif
 
-		CommandIdPop(queryDesc);
+		CommandIdRestore(queryDesc);
 	}
 	PG_CATCH();
 	{
@@ -1297,7 +1299,7 @@ standard_ExecutorRun(QueryDesc *queryDesc,
 void
 ExecutorFinish(QueryDesc *queryDesc)
 {
-	CommandIdPush(queryDesc);
+	CommandIdUpdate(queryDesc);
 
 #ifdef FAULT_INJECTOR
 	if (SIMPLE_FAULT_INJECTOR("track_query_command_id") == FaultInjectorTypeSkip)
@@ -1314,7 +1316,7 @@ ExecutorFinish(QueryDesc *queryDesc)
 		QUERY_ID_LOG_EXEC("END", queryDesc);
 #endif
 
-	CommandIdPop(queryDesc);
+	CommandIdRestore(queryDesc);
 }
 
 void
@@ -1390,7 +1392,7 @@ standard_ExecutorFinish(QueryDesc *queryDesc)
 void
 ExecutorEnd(QueryDesc *queryDesc)
 {
-	CommandIdPush(queryDesc);
+	CommandIdUpdate(queryDesc);
 
 #ifdef FAULT_INJECTOR
 	if (SIMPLE_FAULT_INJECTOR("track_query_command_id") == FaultInjectorTypeSkip)
@@ -1407,7 +1409,7 @@ ExecutorEnd(QueryDesc *queryDesc)
 		QUERY_ID_LOG_EXEC("END", queryDesc);
 #endif
 
-	CommandIdPop(queryDesc);
+	CommandIdRestore(queryDesc);
 }
 
 void

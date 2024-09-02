@@ -67,7 +67,7 @@ int			qdPostmasterPort;	/* Master Segment Postmaster port. */
 
 int			gp_command_count;	/* num of commands from client */
 
-int			gp_top_command_id;
+int			gp_top_command_id;	/* id of the top level command */
 
 bool		gp_debug_pgproc;	/* print debug info for PGPROC */
 bool		Debug_print_prelim_plan;	/* Shall we log argument of
@@ -728,7 +728,7 @@ gpvars_check_statement_mem(int *newval, void **extra, GucSource source)
 /*
  * increment_command_count
  *	  Increment gp_command_count. If the new command count is 0 or a negative number, reset it to 1.
- *	  And keep MyProc->queryCommandId synced with gp_command_count.
+ *	  And update MyProc->queryCommandId.
  */
 void
 increment_command_count()
@@ -737,10 +737,6 @@ increment_command_count()
 	if (gp_command_count <= 0)
 		gp_command_count = 1;
 
-	/*
-	 * No need to maintain MyProc->queryCommandId elsewhere, we guarantee
-	 * they are always synced here.
-	 */
 	MyProc->queryCommandId = gp_command_count;
 }
 
