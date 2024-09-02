@@ -367,6 +367,15 @@ ProcessUtility(Node *parsetree,
 	if (Gp_role != GP_ROLE_EXECUTE)
 		increment_command_count();
 
+#ifdef FAULT_INJECTOR
+	if (SIMPLE_FAULT_INJECTOR("track_query_command_id") == FaultInjectorTypeSkip ||
+		SIMPLE_FAULT_INJECTOR("track_query_command_id_at_start") == FaultInjectorTypeSkip)
+		elog(NOTICE, "START %s | Q: %s | QUERY ID: %d",
+										__FUNCTION__,
+										queryString,
+										MyProc->queryCommandId);
+#endif
+
 	/*
 	 * We provide a function hook variable that lets loadable plugins get
 	 * control when ProcessUtility is called.  Such a plugin would normally
@@ -380,6 +389,14 @@ ProcessUtility(Node *parsetree,
 		standard_ProcessUtility(parsetree, queryString,
 								context, params,
 								dest, completionTag);
+
+#ifdef FAULT_INJECTOR
+	if (SIMPLE_FAULT_INJECTOR("track_query_command_id") == FaultInjectorTypeSkip)
+		elog(NOTICE, "END %s | Q: %s | QUERY ID: %d",
+										__FUNCTION__,
+										queryString,
+										MyProc->queryCommandId);
+#endif
 
 	MyProc->queryCommandId = saved_command_id;
 }
