@@ -60,3 +60,5 @@ test: resgroup/resgroup_dumpinfo
 test: resgroup/resgroup_large_group_id
 
 test: resgroup/disable_resgroup
+
+test: resgroup/resgroup_startup_memory

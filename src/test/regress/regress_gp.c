@@ -50,10 +50,12 @@
 #include "libpq/hba.h"
 #include "utils/builtins.h"
 #include "utils/geo_decls.h"
+#include "utils/gp_alloc.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/resource_manager.h"
 #include "utils/timestamp.h"
+#include "utils/vmem_tracker.h"
 
 /* table_functions test */
 extern Datum multiset_example(PG_FUNCTION_ARGS);
@@ -78,6 +80,7 @@ extern Datum userdata_project(PG_FUNCTION_ARGS);
 extern Datum checkResourceQueueMemoryLimits(PG_FUNCTION_ARGS);
 extern Datum repeatPalloc(PG_FUNCTION_ARGS);
 extern Datum resGroupPalloc(PG_FUNCTION_ARGS);
+extern Datum gp_occupy_resgroup_memory(PG_FUNCTION_ARGS);
 
 /* Gang management test support */
 extern Datum gangRaiseInfo(PG_FUNCTION_ARGS);
@@ -134,6 +137,39 @@ static EPlan *find_plan(char *ident, EPlan ** eplan, int *nplans);
 
 extern Datum trigger_udf_return_new_oid(PG_FUNCTION_ARGS);
 
+static MemoryContext gp_memtest_memory_context = NULL;
+
+PG_FUNCTION_INFO_V1(gp_occupy_resgroup_memory);
+Datum
+gp_occupy_resgroup_memory(PG_FUNCTION_ARGS)
+{
+	int memLimit, slotQuota, sharedQuota;
+	extern volatile int32 *segmentVmemChunks;
+	MemoryContext saveMemoryContext = NULL;
+	int32 totalGroupChunks, chunksToAllocate;
+
+	gp_memtest_memory_context = AllocSetContextCreate(TopMemoryContext,
+													  "gp_memtest_memory_context",
+													  ALLOCSET_DEFAULT_MINSIZE,
+													  ALLOCSET_DEFAULT_INITSIZE,
+													  ALLOCSET_DEFAULT_MAXSIZE);
+
+	saveMemoryContext = TopMemoryContext;
+	MemoryContextSwitchTo(gp_memtest_memory_context);
+
+	ResGroupGetMemInfo(&memLimit, &slotQuota, &sharedQuota);
+	totalGroupChunks = slotQuota + sharedQuota;
+
+	chunksToAllocate = totalGroupChunks << VmemTracker_GetChunkSizeInBits();
+	Assert(chunksToAllocate > 0);
+
+	gp_malloc(chunksToAllocate);
+
+	MemoryContextSwitchTo(TopMemoryContext);
+	MemoryContextDelete(gp_memtest_memory_context);
+
+	PG_RETURN_VOID();
+}
 
 PG_FUNCTION_INFO_V1(multiset_scalar_null);
 Datum

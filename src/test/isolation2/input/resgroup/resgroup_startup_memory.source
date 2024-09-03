@@ -1,0 +1,35 @@
+-- enable resource group and restart cluster.
+-- start_ignore
+! gpconfig -c gp_resource_manager -v group;
+! gpconfig -c runaway_detector_activation_percent -v 100;
+! gpstop -rai;
+-- end_ignore
+
+0: SHOW gp_resource_manager;
+
+-- create a large resgroup to fill shared quota
+0: create resource group fill_group with (memory_limit=80, memory_spill_ratio=100, cpu_rate_limit=20);
+
+-- create a resource group with low memory limit to fill it with one allocation
+-- set concurrency=1 to make calculations trivial
+0: create resource group test_group with (concurrency=1, memory_limit=10, memory_spill_ratio=100, cpu_rate_limit=20);
+0: create role test_role resource group test_group;
+
+-- gp_occupy_resgroup_memory just allocates the amount of memory which equals
+-- the entire amount of resgroup memory
+0: CREATE FUNCTION gp_occupy_resgroup_memory()
+RETURNS void
+AS '@abs_builddir@/../regress/regress@DLSUFFIX@'
+LANGUAGE C STRICT EXECUTE ON ANY;
+
+0: set role test_role;
+0: select gp_occupy_resgroup_memory() from gp_dist_random('gp_id') where gp_segment_id = 1;
+
+0: set role none;
+0: drop role test_role;
+0: drop resource group test_group;
+0: drop resource group fill_group;
+
+-- start_ignore
+! gpstop -rai;
+-- end_ignore
