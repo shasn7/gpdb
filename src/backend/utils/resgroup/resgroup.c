@@ -1599,7 +1599,7 @@ selfDetachResGroup(ResGroupData *group, ResGroupSlotData *slot)
  * will later be added to resgroup via selfAttachResGroup
  */
 void
-selfAddStartupChunks(int32 chunks)
+ResGroupProcAddStartupChunks(int32 chunks)
 {
 	self->memUsage += chunks;
 }
@@ -1609,7 +1609,7 @@ selfAddStartupChunks(int32 chunks)
  * subtracted from a resource group via selfDetachResGroup
  */
 void
-selfSubStartupChunks(int32 chunks)
+ResGroupProcSubStartupChunks(int32 chunks)
 {
 	self->memUsage -= chunks;
 }

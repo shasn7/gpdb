@@ -670,7 +670,7 @@ VmemTracker_RegisterStartupMemory(int64 bytes)
 	pg_atomic_add_fetch_u32((pg_atomic_uint32 *) segmentVmemChunks,
 							startupChunks);
 
-	selfAddStartupChunks(startupChunks);
+	ResGroupProcAddStartupChunks(startupChunks);
 
 	/*
 	 * Step 2, check if an OOM error should be raised by allocating 0 chunk.
@@ -694,7 +694,7 @@ VmemTracker_UnregisterStartupMemory(void)
 		pg_atomic_sub_fetch_u32((pg_atomic_uint32 *) &MySessionState->sessionVmem,
 								startupChunks);
 
-	selfSubStartupChunks(startupChunks);
+	ResGroupProcSubStartupChunks(startupChunks);
 
 	trackedBytes -= startupBytes;
 	trackedVmemChunks -= startupChunks;
