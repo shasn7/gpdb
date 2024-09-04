@@ -301,9 +301,14 @@ ProcessQuery(Portal portal,
 
 	if (Gp_role == GP_ROLE_DISPATCH)
 	{
+		int saved_command_id = MyProc->queryCommandId;
+		MyProc->queryCommandId = queryDesc->command_id;
+
 		/* MPP-4082. Issue automatic ANALYZE if conditions are satisfied. */
 		bool inFunction = false;
 		auto_stats(cmdType, relationOid, queryDesc->es_processed, inFunction);
+
+		MyProc->queryCommandId = saved_command_id;
 	}
 
 	FreeQueryDesc(queryDesc);

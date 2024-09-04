@@ -2611,6 +2611,8 @@ where role = 'p' and content = -1; | QUERY ID: 189
 -- s/select pg_catalog.pg_relation_size\([0-9]+, \'.+\'\)/select pg_catalog.pg_relation_size\(\)/
 -- m/select pg_catalog.gp_acquire_sample_rows\([0-9]+, [0-9]+, \'.+'\)/
 -- s/select pg_catalog.gp_acquire_sample_rows\([0-9]+, [0-9]+, \'.+'\)/select pg_catalog.gp_acquire_sample_rows\(\)/
+-- m/FROM pg_aoseg.pg_aoseg_[0-9]+/
+-- s/FROM pg_aoseg.pg_aoseg_[0-9]+/FROM pg_aoseg.pg_aoseg_OID/
 -- end_matchsubs
 select gp_inject_fault_infinite('track_query_command_id_at_start', 'skip', dbid) from gp_segment_configuration;
  gp_inject_fault_infinite 
@@ -2625,27 +2627,85 @@ select gp_inject_fault_infinite('track_query_command_id_at_start', 'skip', dbid)
  Success:
 (8 rows)
 
-create table test_table as select 1;
-NOTICE:  START ProcessUtility | Q: create table test_table as select 1; | QUERY ID: 193
+create table t as select 1;
+NOTICE:  START ProcessUtility | Q: create table t as select 1; | QUERY ID: 193
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause. Creating a NULL policy entry.
-NOTICE:  START ExecutorStart | Q: create table test_table as select 1; | QUERY ID: 194
+NOTICE:  START ExecutorStart | Q: create table t as select 1; | QUERY ID: 194
 NOTICE:  START ExecutorStart | Q: select pg_catalog.pg_highest_oid() | QUERY ID: 194  (seg0 127.0.1.1:6002 pid=403017)
 NOTICE:  START ExecutorStart | Q: select pg_catalog.pg_highest_oid() | QUERY ID: 194  (seg1 127.0.1.1:6003 pid=403018)
 NOTICE:  START ExecutorStart | Q: select pg_catalog.pg_highest_oid() | QUERY ID: 194  (seg2 127.0.1.1:6004 pid=403019)
-NOTICE:  START ExecutorStart | Q: create table test_table as select 1; | QUERY ID: 194  (seg0 slice1 127.0.1.1:6002 pid=403060)
-NOTICE:  START ExecutorStart | Q: create table test_table as select 1; | QUERY ID: 194  (seg2 slice1 127.0.1.1:6004 pid=403061)
-NOTICE:  START ExecutorStart | Q: create table test_table as select 1; | QUERY ID: 194  (seg0 127.0.1.1:6002 pid=403017)
-NOTICE:  START ExecutorStart | Q: create table test_table as select 1; | QUERY ID: 194  (seg2 127.0.1.1:6004 pid=403019)
-NOTICE:  START ExecutorStart | Q: create table test_table as select 1; | QUERY ID: 194  (seg1 127.0.1.1:6003 pid=403018)
-NOTICE:  START ExecutorStart | Q: create table test_table as select 1; | QUERY ID: 194  (seg1 slice1 127.0.1.1:6003 pid=403051)
+NOTICE:  START ExecutorStart | Q: create table t as select 1; | QUERY ID: 194  (seg0 slice1 127.0.1.1:6002 pid=403060)
+NOTICE:  START ExecutorStart | Q: create table t as select 1; | QUERY ID: 194  (seg2 slice1 127.0.1.1:6004 pid=403061)
+NOTICE:  START ExecutorStart | Q: create table t as select 1; | QUERY ID: 194  (seg0 127.0.1.1:6002 pid=403017)
+NOTICE:  START ExecutorStart | Q: create table t as select 1; | QUERY ID: 194  (seg2 127.0.1.1:6004 pid=403019)
+NOTICE:  START ExecutorStart | Q: create table t as select 1; | QUERY ID: 194  (seg1 127.0.1.1:6003 pid=403018)
+NOTICE:  START ExecutorStart | Q: create table t as select 1; | QUERY ID: 194  (seg1 slice1 127.0.1.1:6003 pid=403051)
 NOTICE:  START ExecutorStart | Q: select pg_catalog.pg_relation_size(16490, 'main') | QUERY ID: 193  (seg0 127.0.1.1:6002 pid=403017)
 NOTICE:  START ExecutorStart | Q: select pg_catalog.pg_relation_size(16490, 'main') | QUERY ID: 193  (seg1 127.0.1.1:6003 pid=403018)
 NOTICE:  START ExecutorStart | Q: select pg_catalog.pg_relation_size(16490, 'main') | QUERY ID: 193  (seg2 127.0.1.1:6004 pid=403019)
 NOTICE:  START ExecutorStart | Q: select pg_catalog.gp_acquire_sample_rows(16490, 10000, 'f'); | QUERY ID: 193  (seg0 127.0.1.1:6002 pid=403017)
 NOTICE:  START ExecutorStart | Q: select pg_catalog.gp_acquire_sample_rows(16490, 10000, 'f'); | QUERY ID: 193  (seg1 127.0.1.1:6003 pid=403018)
 NOTICE:  START ExecutorStart | Q: select pg_catalog.gp_acquire_sample_rows(16490, 10000, 'f'); | QUERY ID: 193  (seg2 127.0.1.1:6004 pid=403019)
+drop table t;
+NOTICE:  START ProcessUtility | Q: drop table t; | QUERY ID: 196
+NOTICE:  START ProcessUtility | Q: drop table t; | QUERY ID: 196  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ProcessUtility | Q: drop table t; | QUERY ID: 196  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ProcessUtility | Q: drop table t; | QUERY ID: 196  (seg2 127.0.1.1:6004 pid=314507)
+create table t (i int, j text) with (appendonly = true) distributed by (i);
+NOTICE:  START ProcessUtility | Q: create table t (i int, j text) with (appendonly = true) distributed by (i); | QUERY ID: 198
+NOTICE:  START ProcessUtility | Q: create table t (i int, j text) with (appendonly = true) distributed by (i); | QUERY ID: 198  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ProcessUtility | Q: create table t (i int, j text) with (appendonly = true) distributed by (i); | QUERY ID: 198  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ProcessUtility | Q: create table t (i int, j text) with (appendonly = true) distributed by (i); | QUERY ID: 198  (seg2 127.0.1.1:6004 pid=314507)
+insert into t select i, (i + 1)::text from generate_series(1, 100) i;
+NOTICE:  START ExecutorStart | Q: insert into t select i, (i + 1)::text from generate_series(1, 100) i; | QUERY ID: 200
+NOTICE:  START ExecutorStart | Q: SELECT state, segno FROM pg_aoseg.pg_aoseg_16612 | QUERY ID: 200  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ExecutorStart | Q: SELECT state, segno FROM pg_aoseg.pg_aoseg_16612 | QUERY ID: 200  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ExecutorStart | Q: SELECT state, segno FROM pg_aoseg.pg_aoseg_16612 | QUERY ID: 200  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ExecutorStart | Q: insert into t select i, (i + 1)::text from generate_series(1, 100) i; | QUERY ID: 200  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ExecutorStart | Q: insert into t select i, (i + 1)::text from generate_series(1, 100) i; | QUERY ID: 200  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ExecutorStart | Q: insert into t select i, (i + 1)::text from generate_series(1, 100) i; | QUERY ID: 200  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ExecutorStart | Q: select pg_catalog.pg_relation_size(16612, 'main') | QUERY ID: 200  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ExecutorStart | Q: select pg_catalog.pg_relation_size(16612, 'main') | QUERY ID: 200  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ExecutorStart | Q: select pg_catalog.pg_relation_size(16612, 'main') | QUERY ID: 200  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ExecutorStart | Q: select pg_catalog.gp_acquire_sample_rows(16612, 10000, 'f'); | QUERY ID: 200  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ExecutorStart | Q: select pg_catalog.gp_acquire_sample_rows(16612, 10000, 'f'); | QUERY ID: 200  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ExecutorStart | Q: select pg_catalog.gp_acquire_sample_rows(16612, 10000, 'f'); | QUERY ID: 200  (seg2 127.0.1.1:6004 pid=314507)
+vacuum analyze t;
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ExecutorStart | Q: SELECT tupcount, segno FROM pg_aoseg.pg_aoseg_16612 WHERE segno = 0 | QUERY ID: 202  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ExecutorStart | Q: SELECT tupcount, segno FROM pg_aoseg.pg_aoseg_16612 WHERE segno = 0 | QUERY ID: 202  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ExecutorStart | Q: SELECT tupcount, segno FROM pg_aoseg.pg_aoseg_16612 WHERE segno = 0 | QUERY ID: 202  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ExecutorStart | Q: SELECT tupcount, segno, state FROM pg_aoseg.pg_aoseg_16612 | QUERY ID: 202  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ExecutorStart | Q: SELECT tupcount, segno, state FROM pg_aoseg.pg_aoseg_16612 | QUERY ID: 202  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ExecutorStart | Q: SELECT tupcount, segno, state FROM pg_aoseg.pg_aoseg_16612 | QUERY ID: 202  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ExecutorStart | Q: SELECT tupcount, segno FROM pg_aoseg.pg_aoseg_16612 | QUERY ID: 202  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ExecutorStart | Q: SELECT tupcount, segno FROM pg_aoseg.pg_aoseg_16612 | QUERY ID: 202  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ExecutorStart | Q: SELECT tupcount, segno FROM pg_aoseg.pg_aoseg_16612 | QUERY ID: 202  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ProcessUtility | Q: vacuum analyze t; | QUERY ID: 202  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ExecutorStart | Q: select pg_catalog.pg_relation_size(16612, 'main') | QUERY ID: 202  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ExecutorStart | Q: select pg_catalog.pg_relation_size(16612, 'main') | QUERY ID: 202  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ExecutorStart | Q: select pg_catalog.pg_relation_size(16612, 'main') | QUERY ID: 202  (seg1 127.0.1.1:6003 pid=314508)
+NOTICE:  START ExecutorStart | Q: select pg_catalog.gp_acquire_sample_rows(16612, 10000, 'f'); | QUERY ID: 202  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ExecutorStart | Q: select pg_catalog.gp_acquire_sample_rows(16612, 10000, 'f'); | QUERY ID: 202  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ExecutorStart | Q: select pg_catalog.gp_acquire_sample_rows(16612, 10000, 'f'); | QUERY ID: 202  (seg1 127.0.1.1:6003 pid=314508)
+drop table t;
+NOTICE:  START ProcessUtility | Q: drop table t; | QUERY ID: 204
+NOTICE:  START ProcessUtility | Q: drop table t; | QUERY ID: 204  (seg0 127.0.1.1:6002 pid=314506)
+NOTICE:  START ProcessUtility | Q: drop table t; | QUERY ID: 204  (seg2 127.0.1.1:6004 pid=314507)
+NOTICE:  START ProcessUtility | Q: drop table t; | QUERY ID: 204  (seg1 127.0.1.1:6003 pid=314508)
 select gp_inject_fault_infinite('track_query_command_id_at_start', 'reset', dbid) from gp_segment_configuration;
-NOTICE:  START ExecutorStart | Q: select gp_inject_fault_infinite('track_query_command_id_at_start', 'reset', dbid) from gp_segment_configuration; | QUERY ID: 196
+NOTICE:  START ExecutorStart | Q: select gp_inject_fault_infinite('track_query_command_id_at_start', 'reset', dbid) from gp_segment_configuration; | QUERY ID: 206
  gp_inject_fault_infinite 
 --------------------------
  Success:
