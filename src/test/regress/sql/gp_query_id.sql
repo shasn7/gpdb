@@ -95,10 +95,18 @@ where role = 'p' and content = -1;
 -- s/select pg_catalog.pg_relation_size\([0-9]+, \'.+\'\)/select pg_catalog.pg_relation_size\(\)/
 -- m/select pg_catalog.gp_acquire_sample_rows\([0-9]+, [0-9]+, \'.+'\)/
 -- s/select pg_catalog.gp_acquire_sample_rows\([0-9]+, [0-9]+, \'.+'\)/select pg_catalog.gp_acquire_sample_rows\(\)/
+-- m/FROM pg_aoseg.pg_aoseg_[0-9]+/
+-- s/FROM pg_aoseg.pg_aoseg_[0-9]+/FROM pg_aoseg.pg_aoseg_OID/
 -- end_matchsubs
 select gp_inject_fault_infinite('track_query_command_id_at_start', 'skip', dbid) from gp_segment_configuration;
 
-create table test_table as select 1;
+create table t as select 1;
+drop table t;
+
+create table t (i int, j text) with (appendonly = true) distributed by (i);
+insert into t select i, (i + 1)::text from generate_series(1, 100) i;
+vacuum analyze t;
+drop table t;
 
 select gp_inject_fault_infinite('track_query_command_id_at_start', 'reset', dbid) from gp_segment_configuration;
 
