@@ -1271,7 +1271,7 @@ NOTICE:  END ExecutorEnd | Q: SELECT 'PASS' | QUERY ID: 75
 CONTEXT:  SQL statement "SELECT 'PASS'"
 PL/pgSQL function sirv_function() line 23 at assignment
 NOTICE:  END ExecutorRun | Q: declare cur1 cursor for select sirv_function() as res; | QUERY ID: 54
-NOTICE:  END ProcessUtility | Q: fetch 1 from cur1; | QUERY ID: 53
+NOTICE:  END ProcessUtility | Q: fetch 1 from cur1; | QUERY ID: 56
  res  
 ------
  PASS
@@ -1281,7 +1281,7 @@ fetch all from cur1;
 NOTICE:  START ProcessUtility | Q: fetch all from cur1; | QUERY ID: 77
 NOTICE:  START ExecutorRun | Q: declare cur1 cursor for select sirv_function() as res; | QUERY ID: 54
 NOTICE:  END ExecutorRun | Q: declare cur1 cursor for select sirv_function() as res; | QUERY ID: 54
-NOTICE:  END ProcessUtility | Q: fetch all from cur1; | QUERY ID: 53
+NOTICE:  END ProcessUtility | Q: fetch all from cur1; | QUERY ID: 77
  res 
 -----
 (0 rows)
@@ -1690,7 +1690,7 @@ NOTICE:  END ExecutorEnd | Q: SELECT 'PASS' | QUERY ID: 105
 CONTEXT:  SQL statement "SELECT 'PASS'"
 PL/pgSQL function sirv_function() line 23 at assignment
 NOTICE:  END ExecutorRun | Q: declare cur1_a cursor for select sirv_function() as res; | QUERY ID: 84
-NOTICE:  END ProcessUtility | Q: fetch 1 from cur1_a; | QUERY ID: 83
+NOTICE:  END ProcessUtility | Q: fetch 1 from cur1_a; | QUERY ID: 86
  res  
 ------
  PASS
@@ -2089,7 +2089,7 @@ NOTICE:  END ExecutorEnd | Q: SELECT 'PASS' | QUERY ID: 129
 CONTEXT:  SQL statement "SELECT 'PASS'"
 PL/pgSQL function sirv_function() line 23 at assignment
 NOTICE:  END ExecutorRun | Q: declare cur2_b cursor for select sirv_function() as res; | QUERY ID: 108
-NOTICE:  END ProcessUtility | Q: fetch 2 from cur2_b; | QUERY ID: 107
+NOTICE:  END ProcessUtility | Q: fetch 2 from cur2_b; | QUERY ID: 110
  res  
 ------
  PASS
@@ -2099,7 +2099,7 @@ fetch all from cur2_b;
 NOTICE:  START ProcessUtility | Q: fetch all from cur2_b; | QUERY ID: 131
 NOTICE:  START ExecutorRun | Q: declare cur2_b cursor for select sirv_function() as res; | QUERY ID: 108
 NOTICE:  END ExecutorRun | Q: declare cur2_b cursor for select sirv_function() as res; | QUERY ID: 108
-NOTICE:  END ProcessUtility | Q: fetch all from cur2_b; | QUERY ID: 107
+NOTICE:  END ProcessUtility | Q: fetch all from cur2_b; | QUERY ID: 131
  res 
 -----
 (0 rows)
@@ -2108,7 +2108,7 @@ fetch all from cur1_a;
 NOTICE:  START ProcessUtility | Q: fetch all from cur1_a; | QUERY ID: 133
 NOTICE:  START ExecutorRun | Q: declare cur1_a cursor for select sirv_function() as res; | QUERY ID: 84
 NOTICE:  END ExecutorRun | Q: declare cur1_a cursor for select sirv_function() as res; | QUERY ID: 84
-NOTICE:  END ProcessUtility | Q: fetch all from cur1_a; | QUERY ID: 83
+NOTICE:  END ProcessUtility | Q: fetch all from cur1_a; | QUERY ID: 133
  res 
 -----
 (0 rows)
