@@ -1634,7 +1634,6 @@ exec_simple_query(const char *query_string)
 	if (Gp_role != GP_ROLE_EXECUTE)
 		increment_command_count();
 
-
 	/*
 	 * Report query to various monitoring facilities.
 	 */
