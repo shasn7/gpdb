@@ -209,15 +209,6 @@ extern bool verify_gpfdists_cert;
 extern int gp_command_count;
 
 /*
- * gp_top_command_id
- *
- * It is set to gp_command_count at the beginning of the command execution and
- * remains the same till next command from the client (while gp_command_count
- * can be incremented several times during one client's command execution).
- */
-extern int gp_top_command_id;
-
-/*
  * Gp_write_shared_snapshot
  *
  * The value of this variable is actually meaningless. We use it simply

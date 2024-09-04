@@ -125,12 +125,13 @@ CreateQueryDesc(PlannedStmt *plannedstmt,
 	/* not yet executed */
 	qd->already_executed = false;
 
-	qd->parent_command_id = MyProc->queryCommandId;
+	int saved_command_id = MyProc->queryCommandId;
 
 	if (Gp_role != GP_ROLE_EXECUTE)
 		increment_command_count();
 
 	qd->command_id = MyProc->queryCommandId;
+	MyProc->queryCommandId = saved_command_id;
 
 	return qd;
 }

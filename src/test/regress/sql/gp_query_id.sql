@@ -105,4 +105,3 @@ select gp_inject_fault_infinite('track_query_command_id_at_start', 'reset', dbid
 drop function sirv_function();
 drop function not_inlineable_sql_func(i int);
 reset client_min_messages;
-
