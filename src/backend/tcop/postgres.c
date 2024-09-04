@@ -1632,10 +1632,7 @@ exec_simple_query(const char *query_string)
 	SIMPLE_FAULT_INJECTOR("exec_simple_query_start");
 
 	if (Gp_role != GP_ROLE_EXECUTE)
-	{
 		increment_command_count();
-		gp_top_command_id = MyProc->queryCommandId;
-	}
 
 
 	/*

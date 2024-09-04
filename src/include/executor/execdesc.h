@@ -246,7 +246,6 @@ typedef struct QueryDesc
 	Node	   *utilitystmt;	/* utility statement, or null */
 	const char *sourceText;		/* source text of the query */
 	int		    command_id;		/* id of the query */
-	int		    parent_command_id;		/* id of the parent query */
 	Snapshot	snapshot;		/* snapshot to use for query */
 	Snapshot	crosscheck_snapshot;	/* crosscheck for RI update/delete */
 	DestReceiver *dest;			/* the destination for tuple output */
