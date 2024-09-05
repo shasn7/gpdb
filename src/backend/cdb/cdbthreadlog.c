@@ -23,6 +23,7 @@
 #include "miscadmin.h"
 #include "pgtime.h"
 #include "postmaster/syslogger.h"
+#include "storage/proc.h"
 
 
 #ifndef _WIN32
@@ -170,7 +171,7 @@ write_log(const char *fmt,...)
 	sprintf(tempbuf, "%d", MyProcPid);
 	strcat(logprefix, tempbuf); /* pid */
 	strcat(logprefix, "|");
-	sprintf(tempbuf, "con%d cmd%d", gp_session_id, gp_command_count);
+	sprintf(tempbuf, "con%d cmd%d", gp_session_id, MyProc->queryCommandId);
 	strcat(logprefix, tempbuf);
 
 	strcat(logprefix, "|");
