@@ -688,7 +688,7 @@ void
 shareinput_create_bufname_prefix(char* p, int size, int share_id)
 {
 	snprintf(p, size, "SIRW_%d_%d_%d",
-			 gp_session_id, gp_command_count, share_id);
+			 gp_session_id, MyProc->queryCommandId, share_id);
 }
 
 /*
