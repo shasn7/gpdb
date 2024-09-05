@@ -3974,7 +3974,7 @@ write_syslogger_in_csv(ErrorData *edata, bool amsyslogger)
 
 	/* GPDB specific options */
 	syslogger_write_int32(true, "con", gp_session_id, amsyslogger, true);
-	syslogger_write_int32(true, "cmd", gp_command_count, amsyslogger, true);
+	syslogger_write_int32(true, "cmd", MyProc != NULL ? MyProc->queryCommandId : 0, amsyslogger, true);
 	syslogger_write_int32(false, "seg", GpIdentity.segindex, amsyslogger, true);
 	syslogger_write_int32(true, "slice", currentSliceId, amsyslogger, true);
 	{
