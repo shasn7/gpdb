@@ -3,6 +3,16 @@
 --
 create extension if not exists gp_inject_fault;
 
+-- start_ignore
+drop function if exists sirv_function();
+drop function if exists not_inlineable_sql_func(i int);
+drop table if exists test_data1;
+drop table if exists test_data2;
+drop table if exists t;
+drop table if exists t1;
+drop table if exists t2;
+-- end_ignore
+
 set client_min_messages = notice;
 select gp_inject_fault('all', 'reset', dbid) from gp_segment_configuration;
 
