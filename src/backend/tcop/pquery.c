@@ -1965,6 +1965,6 @@ PortalBackoffEntryInit(Portal portal)
 		gp_session_id > -1)
 	{
 		/* Initialize the SHM backend entry */
-		BackoffBackendEntryInit(gp_session_id, gp_command_count, portal->queueId);
+		BackoffBackendEntryInit(gp_session_id, MyProc != NULL ? MyProc->queryCommandId : 0, portal->queueId);
 	}
 }
