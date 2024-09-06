@@ -5177,7 +5177,10 @@ PostgresMain(int argc, char *argv[],
         /* Reset elog globals */
         currentSliceId = UNSET_SLICE_ID;
         if (Gp_role == GP_ROLE_EXECUTE)
+		{
             gp_command_count = 0;
+			MyProc->queryCommandId = 0;
+		}
 
 		/*
 		 * Do deactiving and runaway detecting before ReadyForQuery(),
