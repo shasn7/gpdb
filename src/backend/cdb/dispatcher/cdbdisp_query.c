@@ -914,7 +914,6 @@ buildGpQueryString(DispatchCommandQueryParms *pQueryParms,
 
 	total_query_len = 1 /* 'M' */ +
 		sizeof(len) /* message length */ +
-		sizeof(gp_command_count) +
 		sizeof(queryCommandId) +
 		sizeof(sessionUserId) /* sessionUserIsSuper */ +
 		sizeof(outerUserId) /* outerUserIsSuper */ +
@@ -943,10 +942,6 @@ buildGpQueryString(DispatchCommandQueryParms *pQueryParms,
 	*pos++ = 'M';
 
 	pos += 4;					/* placeholder for message length */
-
-	tmp = htonl(gp_command_count);
-	memcpy(pos, &tmp, sizeof(gp_command_count));
-	pos += sizeof(gp_command_count);
 
 	tmp = htonl(queryCommandId);
 	memcpy(pos, &tmp, sizeof(queryCommandId));

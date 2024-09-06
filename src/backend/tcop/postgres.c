@@ -5441,9 +5441,8 @@ PostgresMain(int argc, char *argv[],
  					SetCurrentStatementStartTimestamp();
 
 					/* get the client command serial# */
-					gp_command_count = pq_getmsgint(&input_message, 4);
-
 					MyProc->queryCommandId = pq_getmsgint(&input_message, 4);
+					gp_command_count = MyProc->queryCommandId;
 
 					elog(DEBUG1, "Message type %c received by from libpq, len = %d", firstchar, input_message.len); /* TODO: Remove this */
 
