@@ -5178,7 +5178,7 @@ PostgresMain(int argc, char *argv[],
         currentSliceId = UNSET_SLICE_ID;
         if (Gp_role == GP_ROLE_EXECUTE)
 		{
-            gp_command_count = 0;
+			gp_command_count = 0;
 			MyProc->queryCommandId = 0;
 		}
 
