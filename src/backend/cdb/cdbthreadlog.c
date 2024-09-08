@@ -171,7 +171,8 @@ write_log(const char *fmt,...)
 	sprintf(tempbuf, "%d", MyProcPid);
 	strcat(logprefix, tempbuf); /* pid */
 	strcat(logprefix, "|");
-	sprintf(tempbuf, "con%d cmd%d", gp_session_id, MyProc->queryCommandId);
+	sprintf(tempbuf, "con%d cmd%d",
+			gp_session_id, MyProc != NULL ? MyProc->queryCommandId : 0);
 	strcat(logprefix, tempbuf);
 
 	strcat(logprefix, "|");
