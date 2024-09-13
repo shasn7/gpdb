@@ -664,6 +664,7 @@ repeatPalloc(PG_FUNCTION_ARGS)
 	PG_RETURN_INT32(0);
 }
 
+static bool startupConsidered = false;
 PG_FUNCTION_INFO_V1(resGroupPalloc);
 Datum
 resGroupPalloc(PG_FUNCTION_ARGS)
@@ -678,7 +679,12 @@ resGroupPalloc(PG_FUNCTION_ARGS)
 		PG_RETURN_INT32(0);
 
 	ResGroupGetMemInfo(&memLimit, &slotQuota, &sharedQuota);
-	size = ceilf(memLimit * ratio);
+	if (!startupConsidered) {
+		size = ceilf(memLimit * ratio) - 12;
+		startupConsidered = true;
+	} else
+		size = ceilf(memLimit * ratio);
+
 	count = size / 512;
 	for (i = 0; i < count; i++)
 		MemoryContextAlloc(TopMemoryContext, 512 * 1024 * 1024);

@@ -11,6 +11,10 @@
 --
 -- end_matchsubs
 
+-- start_ignore
+! gpstop -rai;
+-- end_ignore
+
 CREATE OR REPLACE FUNCTION resGroupPalloc(float) RETURNS int AS '@abs_builddir@/../regress/regress@DLSUFFIX@', 'resGroupPalloc' LANGUAGE C READS SQL DATA;
 CREATE
 
