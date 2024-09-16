@@ -167,11 +167,11 @@ static void write_eventlog(int level, const char *line, int len);
  * It only works for x86 processors.
  */
 #if defined(__i386)
-#define ASMFP asm volatile ("movl %%ebp, %0" : "=g" (ulp));
+#define ASMFP __asm__ volatile ("movl %%ebp, %0" : "=g" (ulp));
 #define GET_PTR_FROM_VALUE(value) ((uint32)value)
 #define GET_FRAME_POINTER(x) do { uint64 ulp; ASMFP; x = ulp; } while (0)
 #elif defined(__x86_64__)
-#define ASMFP asm volatile ("movq %%rbp, %0" : "=g" (ulp));
+#define ASMFP __asm__ volatile ("movq %%rbp, %0" : "=g" (ulp));
 #define GET_PTR_FROM_VALUE(value) (value)
 #define GET_FRAME_POINTER(x) do { uint64 ulp; ASMFP; x = ulp; } while (0)
 #else
