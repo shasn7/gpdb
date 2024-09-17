@@ -189,7 +189,7 @@ SET
 SET
 2: BEGIN;
 BEGIN
-2: SELECT hold_memory_by_percent_on_qe(1,0.1);
+2: SELECT hold_memory_by_percent_on_qe(1,0.2);
  hold_memory_by_percent_on_qe 
 ------------------------------
  0                            
@@ -224,7 +224,7 @@ ALTER
 SET
 1: BEGIN;
 BEGIN
-1: SELECT hold_memory_by_percent_on_qe(1,0.1);
+1: SELECT hold_memory_by_percent_on_qe(1,0.2);
  hold_memory_by_percent_on_qe 
 ------------------------------
  0                            
