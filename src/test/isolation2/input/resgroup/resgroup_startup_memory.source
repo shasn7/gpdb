@@ -33,6 +33,7 @@ create table t1 (a int, b int) distributed by(a);
 grant select on t1 to test_role;
 
 alter resource group test_group set concurrency 20;
+alter resource group test_group set memory_shared_quota 7;
 
 1: set role test_role;
 1: begin;
