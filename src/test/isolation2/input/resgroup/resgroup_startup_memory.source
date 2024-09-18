@@ -14,10 +14,10 @@ LANGUAGE C READS SQL DATA;
 select * from gp_toolkit.gp_resgroup_config;
 
 alter resource group default_group set memory_limit 10;
-alter resource group admin_group set memory_limit 70;
+alter resource group admin_group set memory_limit 80;
 
 -- set concurrency=1 to make calculations trivial
-create resource group test_group with (concurrency=1, memory_limit=20, memory_spill_ratio=100, cpu_rate_limit=20);
+create resource group test_group with (concurrency=1, memory_limit=10, memory_spill_ratio=100, cpu_rate_limit=20);
 create role test_role resource group test_group;
 
 0: set role test_role;
@@ -63,6 +63,34 @@ alter resource group test_group set concurrency 20;
 7: begin;
 7: select count(*) from t1;
 
+8: set role test_role;
+8: begin;
+8: select count(*) from t1;
+
+9: set role test_role;
+9: begin;
+9: select count(*) from t1;
+
+10: set role test_role;
+10: begin;
+10: select count(*) from t1;
+
+11: set role test_role;
+11: begin;
+11: select count(*) from t1;
+
+12: set role test_role;
+12: begin;
+12: select count(*) from t1;
+
+13: set role test_role;
+13: begin;
+13: select count(*) from t1;
+
+14: set role test_role;
+14: begin;
+14: select count(*) from t1;
+
 1q:
 2q:
 3q:
@@ -70,6 +98,13 @@ alter resource group test_group set concurrency 20;
 5q:
 6q:
 7q:
+8q:
+9q:
+10q:
+11q:
+12q:
+13q:
+14q:
 
 alter resource group admin_group set memory_limit 10;
 
