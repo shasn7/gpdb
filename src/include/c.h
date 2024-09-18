@@ -1219,6 +1219,23 @@ typedef union PGAlignedXLogBlock
 	#define FALL_THROUGH [[fallthrough]];
 #endif
 
+#define DO_PRAGMA(x) _Pragma (#x)
+#if defined(__clang__)
+	#define SUPPRESS_COMPILER_WARNING(expr, warning) do { \
+		_Pragma("clang diagnostic push") \
+		DO_PRAGMA(clang diagnostic ignored warning) \
+		expr; \
+		_Pragma("clang diagnostic pop") \
+	} while(0)
+#elif defined(__GNUC__)
+	#define SUPPRESS_COMPILER_WARNING(expr, warning) do { \
+		_Pragma("GCC diagnostic push") \
+		_Pragma("clang diagnostic ignored \"" warning "\"") \
+		expr; \
+		_Pragma("GCC diagnostic pop") \
+	} while(0)
+#endif
+
 /* ----------------------------------------------------------------
  *				Section 9: system-specific hacks
  *
