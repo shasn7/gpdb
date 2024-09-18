@@ -1,5 +1,14 @@
 FROM rockylinux:8.8 as base
 
+ARG USER_CC=clang
+ARG USER_CXX=clang++
+
+RUN /bin/bash -c $' \n\
+	if [ -z "${USER_CC}" ] || [ -z "${USER_CXX}" ]; then \n\
+		echo "User must provide USER_CC and USER_CXX" \n\
+		exit 1 \n\
+	fi'
+
 # Install some basic utilities and build tools
 RUN dnf -y install 'dnf-command(config-manager)' && dnf config-manager --set-enabled devel && dnf makecache && dnf update -y ca-certificates && \
     rpm --import https://mirror.yandex.ru/rockylinux/RPM-GPG-KEY-Rocky-8 && \

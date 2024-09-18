@@ -131,6 +131,7 @@ function export_gpdb_clients() {
 }
 
 function _main() {
+	echo "Using ${USER_CC} as C compiler and ${USER_CXX} as C++ compiler"
 
 	prep_env
 
