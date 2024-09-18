@@ -13,6 +13,7 @@ LANGUAGE C READS SQL DATA;
 
 select * from gp_toolkit.gp_resgroup_config;
 
+alter resource group default_group set memory_limit 10;
 alter resource group admin_group set memory_limit 70;
 
 -- set concurrency=1 to make calculations trivial
@@ -33,7 +34,6 @@ create table t1 (a int, b int) distributed by(a);
 grant select on t1 to test_role;
 
 alter resource group test_group set concurrency 20;
-alter resource group test_group set memory_shared_quota 7;
 
 1: set role test_role;
 1: begin;

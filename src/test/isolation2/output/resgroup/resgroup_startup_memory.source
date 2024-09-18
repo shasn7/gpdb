@@ -21,7 +21,9 @@ select * from gp_toolkit.gp_resgroup_config;
  6438    | admin_group   | 2           | 10             | 10           | 80                  | 10                 | vmtracker      | -1     
 (2 rows)
 
-alter resource group admin_group set memory_limit 50;
+alter resource group default_group set memory_limit 10;
+ALTER
+alter resource group admin_group set memory_limit 70;
 ALTER
 
 -- set concurrency=1 to make calculations trivial
