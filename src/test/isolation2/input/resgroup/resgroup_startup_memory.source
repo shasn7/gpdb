@@ -13,7 +13,7 @@ LANGUAGE C READS SQL DATA;
 
 select * from gp_toolkit.gp_resgroup_config;
 
-alter resource group admin_group set memory_limit 50;
+alter resource group admin_group set memory_limit 70;
 
 -- set concurrency=1 to make calculations trivial
 create resource group test_group with (concurrency=1, memory_limit=20, memory_spill_ratio=100, cpu_rate_limit=20);
