@@ -146,10 +146,15 @@ function configure() {
     # The full set of configure options which were used for building the
     # tree must be used here as well since the toplevel Makefile depends
     # on these options for deciding what to test. Since we don't ship
-	if [ -z "${USER_CC}" ] || [ -z "${USER_CXX}" ]; then
-		echo "USER_CC or USER_CXX not set"
+
+	# temp to run tests on ci
+	export CC=clang
+	export CXX=clang++
+	if [ -z "${CC}" ] || [ -z "${CXX}" ]; then
+		echo "User must provide CC and CXX"
+		exit 1
 	else
-    	./configure --prefix=/usr/local/greenplum-db-devel --disable-orca --enable-gpcloud --enable-orafce --enable-tap-tests --with-gssapi --with-libxml --with-openssl --with-perl --with-python --with-uuid=e2fs --with-llvm --with-zstd PYTHON=python3.11 PKG_CONFIG_PATH="${GPHOME}/lib/pkgconfig" ${CONFIGURE_FLAGS} CC="${USER_CC}" CXX="${USER_CXX}"
+    	./configure --prefix=/usr/local/greenplum-db-devel --disable-orca --enable-gpcloud --enable-orafce --enable-tap-tests --with-gssapi --with-libxml --with-openssl --with-perl --with-python --with-uuid=e2fs --with-llvm --with-zstd PYTHON=python3.11 PKG_CONFIG_PATH="${GPHOME}/lib/pkgconfig" ${CONFIGURE_FLAGS}
 	fi
 
     popd
