@@ -7,19 +7,6 @@
 
 SHOW gp_resource_manager;
 
-CREATE OR REPLACE VIEW memory_result2 AS
-SELECT rsgname, ismaster, avg(memory_usage) AS avg_mem
-FROM(
-        SELECT rsgname,
-               CASE (j->'key')::text WHEN '"-1"'::text THEN 1 ELSE 0 END AS ismaster,
-               ((j->'value')->>'used')::int AS memory_usage
-        FROM(
-                SELECT rsgname, row_to_json(json_each(memory_usage::json)) AS j FROM
-                    gp_toolkit.gp_resgroup_status
-                WHERE rsgname='test_group'
-            )a
-    )b GROUP BY (rsgname, ismaster) ORDER BY rsgname, ismaster;
-
 CREATE OR REPLACE FUNCTION resGroupPalloc(float) RETURNS int AS
 '@abs_builddir@/../regress/regress@DLSUFFIX@', 'resGroupPalloc'
 LANGUAGE C READS SQL DATA;
@@ -38,11 +25,11 @@ select * from gp_toolkit.gp_resgroup_config;
 -- startup memory when this function is used for the first time and 
 -- subs it from requested memory
 0: select resGroupPalloc(1.0) from gp_dist_random('gp_id') where gp_segment_id = 1;
-select * from memory_result2;
+select * from memory_result;
 
 -- second allocation fails
 0: select resGroupPalloc(0.01) from gp_dist_random('gp_id') where gp_segment_id = 1;
-select * from memory_result2;
+select * from memory_result;
 0q:
 
 create table t1 (a int, b int) distributed by(a);
@@ -53,72 +40,72 @@ alter resource group test_group set concurrency 20;
 1: set role test_role;
 1: begin;
 1: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 2: set role test_role;
 2: begin;
 2: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 3: set role test_role;
 3: begin;
 3: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 4: set role test_role;
 4: begin;
 4: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 5: set role test_role;
 5: begin;
 5: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 6: set role test_role;
 6: begin;
 6: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 7: set role test_role;
 7: begin;
 7: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 8: set role test_role;
 8: begin;
 8: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 9: set role test_role;
 9: begin;
 9: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 10: set role test_role;
 10: begin;
 10: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 11: set role test_role;
 11: begin;
 11: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 12: set role test_role;
 12: begin;
 12: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 13: set role test_role;
 13: begin;
 13: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 14: set role test_role;
 14: begin;
 14: select count(*) from t1;
-select * from memory_result2;
+select * from memory_result;
 
 1q:
 2q:
