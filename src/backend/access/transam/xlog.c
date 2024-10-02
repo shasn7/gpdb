@@ -8207,7 +8207,8 @@ StartupXLOG(void)
 	if (fast_promoted)
 		RequestCheckpoint(CHECKPOINT_FORCE);
 
-	*shmCleanupBackends = true;
+	 if (Gp_role == GP_ROLE_DISPATCH)
+		*shmCleanupBackends = true;
 }
 
 /*
