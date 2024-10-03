@@ -231,7 +231,7 @@ static GpDistributionData *GetDistributionPolicyForPartition(GpDistributionData 
 															 MemoryContext context);
 static unsigned int
 GetTargetSeg(GpDistributionData *distData, Datum *baseValues, bool *baseNulls);
-static ProgramPipes *open_program_pipes(char *command, bool forwrite);
+static ProgramPipes *open_program_pipes(CopyState cstate, bool forwrite);
 static void close_program_pipes(CopyState cstate, bool ifThrow);
 static void cdbFlushInsertBatches(List *resultRels,
 					  CopyState cstate,
@@ -702,6 +702,12 @@ CopyToDispatchFlush(CopyState cstate)
 	resetStringInfo(fe_msgbuf);
 }
 
+/* 
+ * Timeout for waiting inside CopyGetData (in milliseconds).
+ * Interrupts will be checked once timeout expires.
+ */
+#define COPY_WAIT_TIMEOUT 500
+
 /*
  * CopyGetData reads data from the source (file or frontend)
  *
@@ -722,34 +728,56 @@ CopyGetData(CopyState cstate, void *databuf, int datasize)
 	switch (cstate->copy_dest)
 	{
 		case COPY_FILE:
-			bytesread = fread(databuf, 1, datasize, cstate->copy_file);
-			if (feof(cstate->copy_file))
-				cstate->fe_eof = true;
-			if (ferror(cstate->copy_file))
 			{
-				if (cstate->is_program)
+				pgsocket 	sock = fileno(cstate->copy_file);
+				int			rc;
+
+				/*
+				 * Wait until we get data, even if interrupted by a signal,
+				 * while also checking for interrupts
+				 */
+				do
 				{
-					int olderrno = errno;
+					CHECK_FOR_INTERRUPTS();
 
-					close_program_pipes(cstate, true);
+					/* Wait until data arrives or 500 ms passes */
+					rc = WaitLatchOrSocket(NULL, WL_SOCKET_READABLE | WL_TIMEOUT, 
+										   sock, COPY_WAIT_TIMEOUT);
+				} while (!(rc & WL_SOCKET_READABLE));
 
-					/*
-					 * If close_program_pipes() didn't throw an error,
-					 * the program terminated normally, but closed the
-					 * pipe first. Restore errno, and throw an error.
-					 */
-					errno = olderrno;
+				/* Data should be available by this point */
+				ssize_t result = read(sock, databuf, datasize);
 
-					ereport(ERROR,
-							(errcode_for_file_access(),
-							 errmsg("could not read from COPY program: %m")));
-				}
+				if (result == 0)
+					cstate->fe_eof = true;
+				else if (result > 0)
+					bytesread = result;
 				else
-					ereport(ERROR,
-						(errcode_for_file_access(),
-						 errmsg("could not read from COPY file: %m")));
+				{
+					if (cstate->is_program)
+					{
+						int olderrno = errno;
+
+						close_program_pipes(cstate, true);
+
+						/*
+						* If close_program_pipes() didn't throw an error,
+						* the program terminated normally, but closed the
+						* pipe first. Restore errno, and throw an error.
+						*/
+						errno = olderrno;
+
+						ereport(ERROR,
+								(errcode_for_file_access(),
+								 errmsg("could not read from COPY program: %m")));
+					}
+					else
+						ereport(ERROR,
+								(errcode_for_file_access(),
+								 errmsg("could not read from COPY file: %m")));
+				}
+				break;
 			}
-			break;
 		case COPY_OLD_FE:
 			if (pq_getbytes((char *) databuf, datasize))
 			{
@@ -1099,13 +1127,13 @@ DoCopy(const CopyStmt *stmt, const char *queryString, uint64 *processed)
 			{
 				cstate->errMode = SREH_IGNORE;
 			}
+			Assert(stmt->relation);
 			cstate->cdbsreh = makeCdbSreh(sreh->rejectlimit,
 										  sreh->is_limit_in_rows,
 										  cstate->filename,
 										  stmt->relation->relname,
 										  log_to_file);
-			if (rel)
-				cstate->cdbsreh->relid = RelationGetRelid(rel);
+			cstate->cdbsreh->relid = RelationGetRelid(rel);
 		}
 		else
 		{
@@ -2258,7 +2286,7 @@ BeginCopyToOnSegment(QueryDesc *queryDesc)
 
 	if (cstate->is_program)
 	{
-		cstate->program_pipes = open_program_pipes(cstate->filename, true);
+		cstate->program_pipes = open_program_pipes(cstate, true);
 		cstate->copy_file = fdopen(cstate->program_pipes->pipes[0], PG_BINARY_W);
 
 		if (cstate->copy_file == NULL)
@@ -2494,7 +2522,7 @@ BeginCopyTo(Relation rel,
 
 		if (is_program)
 		{
-			cstate->program_pipes = open_program_pipes(cstate->filename, true);
+			cstate->program_pipes = open_program_pipes(cstate, true);
 			cstate->copy_file = fdopen(cstate->program_pipes->pipes[0], PG_BINARY_W);
 
 			if (cstate->copy_file == NULL)
@@ -3570,6 +3598,12 @@ CopyFrom(CopyState cstate)
 							RelationGetRelationName(cstate->rel))));
 	}
 
+	if (rel_part_status(cstate->rel->rd_id) == PART_STATUS_INTERIOR)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot copy to intermediate part of a partitioned table"),
+				 errhint("consider using COPY to either the root or a leaf partition instead.")));
+
 	if (Gp_role == GP_ROLE_UTILITY && rel_is_parent(cstate->rel->rd_id))
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -4552,6 +4586,9 @@ BeginCopyFrom(Relation rel,
 	MemoryContext oldcontext;
 	bool		volatile_defexprs;
 
+	/* rel will need be copied to cstate->rel and must not be NULL */
+	Assert(rel);
+
 	cstate = BeginCopy(true, rel, NULL, NULL, attnamelist, options, NULL);
 	oldcontext = MemoryContextSwitchTo(cstate->copycontext);
 
@@ -4560,8 +4597,7 @@ BeginCopyFrom(Relation rel,
 	 */
 	if (cstate->on_segment || data_source_cb)
 		cstate->dispatch_mode = COPY_DIRECT;
-	else if (Gp_role == GP_ROLE_DISPATCH &&
-			 cstate->rel && cstate->rel->rd_cdbpolicy)
+	else if (Gp_role == GP_ROLE_DISPATCH && cstate->rel->rd_cdbpolicy)
 		cstate->dispatch_mode = COPY_DISPATCH;
 	else if (Gp_role == GP_ROLE_EXECUTE)
 		cstate->dispatch_mode = COPY_EXECUTOR;
@@ -4697,7 +4733,7 @@ BeginCopyFrom(Relation rel,
 
 		if (cstate->is_program)
 		{
-			cstate->program_pipes = open_program_pipes(cstate->filename, false);
+			cstate->program_pipes = open_program_pipes(cstate, false);
 			cstate->copy_file = fdopen(cstate->program_pipes->pipes[0], PG_BINARY_R);
 			if (cstate->copy_file == NULL)
 				ereport(ERROR,
@@ -7953,9 +7989,21 @@ GetTargetSeg(GpDistributionData *distData, Datum *baseValues, bool *baseNulls)
 	return target_seg;
 }
 
-static ProgramPipes*
-open_program_pipes(char *command, bool forwrite)
+static void
+close_program_pipes_on_reset(void *arg)
 {
+	if (!IsAbortInProgress())
+		return;
+
+	CopyState	cstate = arg;
+
+	close_program_pipes(cstate, false);
+}
+
+static ProgramPipes*
+open_program_pipes(CopyState cstate, bool forwrite)
+{
+	char	   *command = cstate->filename;
 	int save_errno;
 	pqsigfunc save_SIGPIPE;
 	/* set up extvar */
@@ -7993,6 +8041,12 @@ open_program_pipes(char *command, bool forwrite)
 				 errmsg("can not start command: %s", command)));
 	}
 
+	MemoryContextCallback *callback = MemoryContextAlloc(cstate->copycontext, sizeof(MemoryContextCallback));
+
+	callback->arg = cstate;
+	callback->func = close_program_pipes_on_reset;
+	MemoryContextRegisterResetCallback(cstate->copycontext, callback);
+
 	return program_pipes;
 }
 
@@ -8002,8 +8056,7 @@ close_program_pipes(CopyState cstate, bool ifThrow)
 	Assert(cstate->is_program);
 
 	int ret = 0;
-	StringInfoData sinfo;
-	initStringInfo(&sinfo);
+	StringInfoData sinfo = {0};
 
 	if (cstate->copy_file)
 	{
@@ -8016,8 +8069,11 @@ close_program_pipes(CopyState cstate, bool ifThrow)
 	{
 		return;
 	}
-	
+
+	if (ifThrow)
+		initStringInfo(&sinfo);
 	ret = pclose_with_stderr(cstate->program_pipes->pid, cstate->program_pipes->pipes, &sinfo);
+	cstate->program_pipes = NULL;
 
 	if (ret == 0 || !ifThrow)
 	{

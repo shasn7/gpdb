@@ -3,40 +3,37 @@
 apt-get update
 apt-get install -y \
   bison \
-  ccache \
   cmake \
   curl \
   flex \
-  git-core \
-  gcc \
   g++ \
-  inetutils-ping \
-  krb5-kdc \
-  krb5-admin-server \
+  gcc \
+  git \
+  iproute2 \
+  iputils-ping \
   libapr1-dev \
+  libaprutil1-dev \
   libbz2-dev \
-  libcurl4-gnutls-dev \
+  libcurl4-openssl-dev \
   libevent-dev \
+  libipc-run-perl \
   libkrb5-dev \
   libpam-dev \
   libperl-dev \
   libreadline-dev \
   libssl-dev \
+  libtool \
+  libuv1-dev \
   libxml2-dev \
+  libxslt-dev \
   libyaml-dev \
   libzstd-dev \
   locales \
   net-tools \
-  ninja-build \
   openssh-client \
   openssh-server \
-  openssl \
-  python-dev \
-  python-pip \
-  python-psutil \
-  python-yaml \
+  pkg-config \
+  python2 \
+  python2-dev \
+  rsync \
   zlib1g-dev
-
-
-pip install conan
-

@@ -2,34 +2,40 @@ FROM centos:centos7 as base
 
 ARG sigar=https://downloads.adsw.io/ADB/6.22.0_arenadata38/centos/7/community/x86_64/sigar-1.6.5-1056.git2932df5.el7.x86_64.rpm
 ARG sigar_headers=http://downloads.adsw.io/ADB/6.22.0_arenadata38/centos/7/community/x86_64/sigar-headers-1.6.5-1056.git2932df5.el7.x86_64.rpm
+ARG CENTOS_REPOS_URL="http://mirror.adsw.io"
 
 # Reinstall glibc-common. This is necessary to get langpacks in docker
 # because docker images don't contain them.
-RUN sed -i 's/\(override_install_langs*\)/# \1/' /etc/yum.conf && \
+# Change URL for repos, because Centos 7 EOL 30.06.2024
+RUN sed -i "s|mirrorlist=http://mirrorlist.centos.org/?release=\$releasever\&arch=\$basearch\&repo=os\&infra=\$infra|baseurl=$CENTOS_REPOS_URL/centos/\$releasever/os/\$basearch|g" /etc/yum.repos.d/CentOS-Base.repo && \
+    sed -i "s|mirrorlist=http://mirrorlist.centos.org/?release=\$releasever\&arch=\$basearch\&repo=updates\&infra=\$infra|baseurl=$CENTOS_REPOS_URL/centos/\$releasever/updates/\$basearch|g" /etc/yum.repos.d/CentOS-Base.repo && \
+    sed -i "s|mirrorlist=http://mirrorlist.centos.org/?release=\$releasever\&arch=\$basearch\&repo=extras\&infra=\$infra|baseurl=$CENTOS_REPOS_URL/centos/\$releasever/extras/\$basearch|g" /etc/yum.repos.d/CentOS-Base.repo && \
+    sed -i 's/\(override_install_langs*\)/# \1/' /etc/yum.conf && \
     yum -y reinstall glibc-common && \
 	yum clean all
 
 # Install some basic utilities and build tools
 RUN yum makecache && yum update -y ca-certificates && \
     rpm --import https://mirror.yandex.ru/centos/RPM-GPG-KEY-CentOS-7 && \
-    yum -y install epel-release java-1.8.0-openjdk-devel && \
+    yum -y install epel-release java-11-openjdk-devel && \
     yum -y install git iproute net-tools openssh-server rsync sudo time vim wget unzip \
-                   ant-junit autoconf bison cmake3 flex gperf indent jq libtool gcc-c++ \
+                   autoconf bison cmake3 flex gperf indent jq libtool gcc-c++ \
                    krb5-server krb5-workstation xerces-c-devel && \
     yum clean all
 
 # install all software we need
 RUN yum makecache && \
-    yum -y install python2-pip && \
     yum -y install python-devel python-psutil python-setuptools && \
     yum -y install apr-devel apr-util-devel bzip2-devel expat-devel libcurl-devel && \
     yum -y install libevent-devel libuuid-devel libxml2-devel libyaml-devel libzstd-devel && \
     yum -y install openssl-devel pam-devel readline-devel snappy-devel libuv-devel && \
-    yum -y install apache-ivy libicu perl-ExtUtils-Embed perl-Env perl-JSON && \
+    yum -y install libicu perl-ExtUtils-Embed perl-Env perl-JSON && \
     yum -y install perl-IPC-Run perl-Test-Base libxslt-devel && \
     yum -y install libzstd-static && \
-    # The last python 2.7 pip
-    pip install --ignore-installed "pip<21.0" && \
+    # Installing the latest version of pip available for python 2.7 (20.3.4).
+    # The installation goes through a bootstrap script since pip from the
+    # repository can no longer update itself.
+    curl https://bootstrap.pypa.io/pip/2.7/get-pip.py | python && \
     pip install psi pytest==3.10.1 && \
     pip install allure-behave==2.4.0 && \
     yum clean all
@@ -50,6 +56,8 @@ RUN ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa && \
 
 # newer version of gcc and run environment for gpdb
 RUN yum -y install centos-release-scl && \
+    sed -i "s|mirrorlist=http://mirrorlist.centos.org?arch=\$basearch\&release=7\&repo=sclo-rh|baseurl=$CENTOS_REPOS_URL/sc-lo/\$releasever/rh/\$basearch/|g" /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo && \
+    sed -i "s|enabled=1|enabled=0|g" /etc/yum.repos.d/CentOS-SCLo-scl.repo && \
     yum -y install --nogpgcheck devtoolset-7-gcc devtoolset-7-gcc-c++ && yum clean all && \
     pip --no-cache-dir install psi && \
     ln -s /usr/bin/cmake3 /usr/bin/cmake && \

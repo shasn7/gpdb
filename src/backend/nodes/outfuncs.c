@@ -1217,6 +1217,8 @@ _outDML(StringInfo str, const DML *node)
 	WRITE_INT_FIELD(actionColIdx);
 	WRITE_INT_FIELD(ctidColIdx);
 	WRITE_INT_FIELD(tupleoidColIdx);
+	WRITE_INT_FIELD(tableoidColIdx);
+	WRITE_BOOL_FIELD(canSetTag);
 
 	_outPlanInfo(str, (Plan *) node);
 }

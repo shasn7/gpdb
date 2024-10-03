@@ -201,6 +201,7 @@ CreateExecutorState(void)
 	estate->currentSubplanLevel = 0;
 	estate->rootSliceId = 0;
 	estate->eliminateAliens = false;
+	estate->sharedScanConsumers = NIL;
 
 	/*
 	 * Return the executor state structure
@@ -1757,14 +1758,27 @@ InitSliceTable(EState *estate, int nMotions, int nSubplans)
 	int			i,
 				n;
 	MemoryContext oldcontext;
+	int max_slices;
 
 	n = 1 + nMotions + nSubplans;
 
-	if (gp_max_slices > 0 && n > gp_max_slices)
+	/*
+	 * Select the maximum slices based on configuration settings, If
+	 * `gp_max_system_slices` is set, choose the minimum of `gp_max_slices`
+	 * and `gp_max_system_slices`, otherwise use `gp_max_slices`
+	 */
+	max_slices = gp_max_slices;
+	if (gp_max_system_slices > 0  && (gp_max_slices == 0 ||
+				gp_max_system_slices < gp_max_slices))
+	{
+		max_slices = gp_max_system_slices;
+	}
+
+	if (max_slices > 0 && n > max_slices)
 		ereport(ERROR,
 				(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
-				 errmsg("at most %d slices are allowed in a query, current number: %d", gp_max_slices, n),
-				 errhint("rewrite your query or adjust GUC gp_max_slices")));
+				 errmsg("at most %d slices are allowed in a query, current number: %d", max_slices, n),
+				 errhint("rewrite your query")));
 
 	oldcontext = MemoryContextSwitchTo(estate->es_query_cxt);
 
@@ -2099,6 +2113,23 @@ void mppExecutorFinishup(QueryDesc *queryDesc)
 	}
 
 	/*
+	 * Notify corresponding producer that the reading is completed. We need to
+	 * do notification before processing the results in order to avoid a
+	 * deadlock. Deadlock could occur when the consumer of a cross slice Shared
+	 * Scan was in slice 0 and the producer was in another slice. QE with
+	 * producer couldn't complete until the consumer sent the notification,
+	 * however that didn't happen because consumer at slice 0 send a
+	 * notification after all QEs are completed.
+	 */
+	ListCell   *cell;
+	foreach (cell, estate->sharedScanConsumers)
+	{
+		ShareInputScanState *state = lfirst(cell);
+		ShareInputScan *sisc = (ShareInputScan *) state->ss.ps.plan;
+		shareinput_reader_notifydone(state->share_lk_ctxt, sisc->share_id);
+	}
+
+	/*
 	 * If QD, wait for QEs to finish and check their results.
 	 */
 	if (estate->dispatcherState && estate->dispatcherState->primaryResults)
@@ -2132,8 +2163,14 @@ void mppExecutorFinishup(QueryDesc *queryDesc)
 		int primaryWriterSliceIndex = PrimaryWriterSliceIndex(estate);
 		//if (sliceRunsOnQE(currentSlice))
 		{
-			estate->es_processed +=
-				cdbdisp_sumCmdTuples(pr, primaryWriterSliceIndex);
+			/*
+			 * Do not modify es_processed if it is not zero. Because
+			 * es_processed save info about tuples, which were really processed,
+			 * and limit was used (not to process tuples more than limit).
+			 */
+			if (0 == estate->es_processed)
+				estate->es_processed =
+					cdbdisp_sumCmdTuples(pr, primaryWriterSliceIndex);
 			estate->es_lastoid =
 				cdbdisp_maxLastOid(pr, primaryWriterSliceIndex);
 

@@ -629,6 +629,11 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	if (parse->setOperations)
 		flatten_simple_union_all(root);
 
+	/*
+	 * If this subplan is inside another correlated subplan or if it itself is
+	 * correlated, disable some optimizations that assume the subplan doesn't
+	 * have any dependencies on other parts of the plan.
+	 */
 	if ((parent_root && parent_root->is_correlated_subplan) ||
 		((Gp_role == GP_ROLE_DISPATCH) &&
 		root->config->is_under_subplan &&
@@ -1935,6 +1940,7 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 
 		/* Obtain canonical grouping sets */
 		canonical_grpsets = make_canonical_groupingsets(parse->groupClause);
+		Assert(canonical_grpsets);
 		numGroupCols = canonical_grpsets->num_distcols;
 
 		/*
@@ -2403,8 +2409,7 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 												0, /* rollup_gs_times */
 												result_plan);
 
-				if (canonical_grpsets != NULL &&
-					canonical_grpsets->grpset_counts != NULL &&
+				if (canonical_grpsets->grpset_counts != NULL &&
 					canonical_grpsets->grpset_counts[0] > 1)
 				{
 					result_plan->flow = pull_up_Flow(result_plan, result_plan->lefttree);
@@ -2470,8 +2475,7 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 												0, /* rollup_gs_times */
 												result_plan);
 
-				if (canonical_grpsets != NULL &&
-					canonical_grpsets->grpset_counts != NULL &&
+				if (canonical_grpsets->grpset_counts != NULL &&
 					canonical_grpsets->grpset_counts[0] > 1)
 				{
 					result_plan->flow = pull_up_Flow(result_plan, result_plan->lefttree);

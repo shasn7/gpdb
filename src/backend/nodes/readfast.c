@@ -2238,6 +2238,8 @@ _readDML(void)
 	READ_INT_FIELD(actionColIdx);
 	READ_INT_FIELD(ctidColIdx);
 	READ_INT_FIELD(tupleoidColIdx);
+	READ_INT_FIELD(tableoidColIdx);
+	READ_BOOL_FIELD(canSetTag);
 
 	readPlanInfo((Plan *)local_node);
 
