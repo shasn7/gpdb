@@ -8211,7 +8211,7 @@ StartupXLOG(void)
 	if (fast_promoted)
 		RequestCheckpoint(CHECKPOINT_FORCE);
 
-	 if (Gp_role == GP_ROLE_DISPATCH)
+	if (Gp_role == GP_ROLE_DISPATCH)
 		*shmCleanupBackends = true;
 }
 
