@@ -123,7 +123,7 @@ typedef struct MemoryContextCallback
  * Avoid accessing it directly!  Instead, use MemoryContextSwitchTo()
  * to change the setting.
  */
-extern PGDLLIMPORT MemoryContext CurrentMemoryContext;
+extern volatile PGDLLIMPORT MemoryContext CurrentMemoryContext;
 
 extern bool gp_mp_inited;
 extern volatile OOMTimeType* segmentOOMTime;

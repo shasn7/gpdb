@@ -69,7 +69,7 @@ HTAB *chunks_htable = NULL;
  * CurrentMemoryContext
  *		Default memory context for allocations.
  */
-MemoryContext CurrentMemoryContext = NULL;
+volatile MemoryContext CurrentMemoryContext = NULL;
 
 /*
  * Standard top-level contexts. For a description of the purpose of each
