@@ -528,7 +528,7 @@ _outQuery(StringInfo str, Query *node)
 	WRITE_NODE_FIELD(rowMarks);
 	WRITE_NODE_FIELD(setOperations);
 	WRITE_NODE_FIELD(constraintDeps);
-	WRITE_BOOL_FIELD(parentStmtType);
+	WRITE_ENUM_FIELD(parentStmtType, ParentStmtType);
 
 	/* Don't serialize policy */
 }

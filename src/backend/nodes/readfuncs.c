@@ -337,7 +337,7 @@ _readQuery(void)
 	READ_NODE_FIELD(constraintDeps);
     READ_NODE_FIELD(withCheckOptions);
     local_node->intoPolicy = NULL;
-    READ_BOOL_FIELD(parentStmtType);
+    READ_ENUM_FIELD(parentStmtType, ParentStmtType);
     READ_LOCATION_FIELD(stmt_location);
     READ_LOCATION_FIELD(stmt_len);
 
