@@ -463,6 +463,7 @@ ALTER TABLE ao_alter_add_part ADD PARTITION "40" START (30) INCLUSIVE END (40) E
 RESET gp_default_storage_options;
 -- use table setting
 ALTER TABLE ao_alter_add_part ADD PARTITION "50" START (40) INCLUSIVE END (50) EXCLUSIVE;
+RESET gp_default_storage_options;
 \d+ ao_alter_add_part*
 DROP TABLE ao_alter_add_part;
 
@@ -478,6 +479,7 @@ ALTER TABLE ao_alter_add_part_no_compress ADD PARTITION "40" START (30) INCLUSIV
 RESET gp_default_storage_options;
 -- use table setting
 ALTER TABLE ao_alter_add_part_no_compress ADD PARTITION "50" START (40) INCLUSIVE END (50) EXCLUSIVE;
+RESET gp_default_storage_options;
 \d+ ao_alter_add_part_no_compress*
 DROP TABLE ao_alter_add_part_no_compress;
 

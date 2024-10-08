@@ -24,12 +24,12 @@
 #include "access/reloptions.h"
 #include "cdb/cdbappendonlyam.h"
 #include "cdb/cdbvars.h"
+#include "commands/tablecmds.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/formatting.h"
 #include "utils/guc.h"
 #include "utils/memutils.h"
-#include "utils/syscache.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "storage/gp_compress.h"
@@ -1366,57 +1366,26 @@ reloptions_has_opt(List *opts, const char *name)
 List *
 build_ao_rel_storage_opts(List *opts, Relation rel)
 {
-	Oid			relid = RelationGetRelid(rel);
-	HeapTuple	tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
+	ListCell *cell;
+	List	 *relopts = reloptions_list(RelationGetRelid(rel));
+	List	 *retopts = NIL;
 
-	if (!HeapTupleIsValid(tuple))
-		elog(ERROR, "cache lookup failed for relation %u", relid);
-
-	bool		isnull;
-	Datum		reloptions = SysCacheGetAttr(RELOID, tuple, Anum_pg_class_reloptions, &isnull);
-
-	if (PointerIsValid(DatumGetPointer(reloptions)))
+	foreach(cell, relopts)
 	{
-		ArrayType  *array = DatumGetArrayTypeP(reloptions);
-		Datum	   *oldoptions;
-		List	   *newopts = NIL;
-		int			noldoptions;
-		int			i;
+		DefElem  *def = lfirst(cell);
+		ListCell *cl;
 
-		deconstruct_array(array, TEXTOID, -1, false, 'i',
-						  &oldoptions, NULL, &noldoptions);
-
-		for (i = 0; i < noldoptions; i++)
+		foreach(cl, opts)
 		{
-			ListCell   *cell;
-			text	   *oldoption = DatumGetTextP(oldoptions[i]);
-			char	   *text_str = VARDATA(oldoption);
-			int			text_len = VARSIZE(oldoption) - VARHDRSZ;
+			DefElem  *de = lfirst(cl);
 
-			foreach(cell, opts)
-			{
-				DefElem    *def = (DefElem *) lfirst(cell);
-				int			kw_len = strlen(def->defname);
-
-				if (text_len > kw_len && text_str[kw_len] == '=' &&
-					pg_strncasecmp(text_str, def->defname, kw_len) == 0)
-					break;
-			}
-
-			if (!cell) {
-				char	   *equal = strchr(text_str, '=');
-
-				if (equal) {
-					text_str[equal - text_str] = '\0';
-					newopts = lappend(newopts, makeDefElem(text_str, (Node *) makeString(equal + 1)));
-				}
-			}
+			if (pg_strcasecmp(de->defname, def->defname) == 0)
+				break;
 		}
 
-		opts = list_concat(opts, newopts);
+		if (!cl)
+			retopts = lappend(retopts, def);
 	}
 
-	ReleaseSysCache(tuple);
-
-	return opts;
+	return list_concat(opts, retopts);
 }
