@@ -1373,17 +1373,8 @@ build_ao_rel_storage_opts(List *opts, Relation rel)
 	foreach(cell, relopts)
 	{
 		DefElem  *def = lfirst(cell);
-		ListCell *cl;
 
-		foreach(cl, opts)
-		{
-			DefElem  *de = lfirst(cl);
-
-			if (pg_strcasecmp(de->defname, def->defname) == 0)
-				break;
-		}
-
-		if (!cl)
+		if (!reloptions_has_opt(opts, def->defname))
 			retopts = lappend(retopts, def);
 	}
 
