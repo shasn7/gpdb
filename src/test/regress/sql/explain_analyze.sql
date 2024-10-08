@@ -11,6 +11,12 @@
 -- s/Planning Time: [0-9.]+ ms/Planning Time: #.### ms/
 -- m/Execution Time: [0-9.]+ ms/
 -- s/Execution Time: [0-9.]+ ms/Execution Time: #.### ms/
+-- m/Executor memory: \d+\w? bytes/
+-- s/Executor memory: \d+\w? bytes/Executor memory: ### bytes/
+-- m/Work_mem: \d+\w? bytes/
+-- s/Work_mem: \d+\w? bytes/Work_mem: ### bytes/
+-- m/Memory used:\s+\d+\w?B/
+-- s/Memory used:\s+\d+\w?B/Memory used:  ###B/
 -- end_matchsubs
 
 CREATE TEMP TABLE empty_table(a int);
