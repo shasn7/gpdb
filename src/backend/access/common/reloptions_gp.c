@@ -1368,7 +1368,7 @@ build_ao_rel_storage_opts(List *opts, Relation rel)
 {
 	ListCell *cell;
 	List	 *relopts = reloptions_list(RelationGetRelid(rel));
-	List	 *retopts = NIL;
+	List	 *retopts = opts;
 
 	foreach(cell, relopts)
 	{
@@ -1378,5 +1378,5 @@ build_ao_rel_storage_opts(List *opts, Relation rel)
 			retopts = lappend(retopts, def);
 	}
 
-	return list_concat(opts, retopts);
+	return retopts;
 }
