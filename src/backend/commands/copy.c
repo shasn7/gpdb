@@ -4415,6 +4415,41 @@ CopyFrom(CopyState cstate)
 					ao = hash_search(ht, &relid, HASH_FIND, &found);
 					if (found)
 						tupcount = ao->tupcount;
+				
+						if (resultRelInfo->ri_partition_hash)
+						{
+							HASH_SEQ_STATUS hash_seq_status;
+							ResultPartHashEntry *entry;
+							ResultRelInfo *partInfo;
+
+							hash_seq_init(&hash_seq_status, resultRelInfo->ri_partition_hash);
+							while ((entry = hash_seq_search(&hash_seq_status)) != NULL)
+							{
+								partInfo = &entry->resultRelInfo;
+								
+								if (relstorage_is_ao(RelinfoGetStorage(partInfo)))
+								{
+									struct {
+										Oid relid;
+										int64 tupcount;
+									} *partAo;
+									bool partFound;
+
+									Oid partRelid = RelationGetRelid(partInfo->ri_RelationDesc);
+									partAo = hash_search(ht, &partRelid, HASH_FIND, &partFound);
+									if (partFound)
+									{
+										uint64 partTupcount = partAo->tupcount;
+										ResultRelInfoSetSegno(partInfo, cstate->ao_segnos);
+										if (partInfo->ri_aoInsertDesc)
+											partInfo->ri_aoInsertDesc->insertCount += partTupcount;
+										if (partInfo->ri_aocsInsertDesc)
+											partInfo->ri_aocsInsertDesc->insertCount += partTupcount;
+									}
+								}
+							/* No need for hash_seq_term() since we iterated to end. */
+							}
+						}
 					else
 						tupcount = 0;
 				}
