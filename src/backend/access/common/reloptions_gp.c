@@ -1366,17 +1366,16 @@ reloptions_has_opt(List *opts, const char *name)
 List *
 build_ao_rel_storage_opts(List *opts, Relation rel)
 {
-	ListCell *cell;
-	List	 *relopts = reloptions_list(RelationGetRelid(rel));
-	List	 *retopts = opts;
+	ListCell *lc;
+	List	 *res = opts;
 
-	foreach(cell, relopts)
+	foreach(lc, reloptions_list(RelationGetRelid(rel)))
 	{
-		DefElem  *def = lfirst(cell);
+		DefElem *de = lfirst(lc);
 
-		if (!reloptions_has_opt(opts, def->defname))
-			retopts = lappend(retopts, def);
+		if (!reloptions_has_opt(opts, de->defname))
+			res = lappend(res, de);
 	}
 
-	return retopts;
+	return res;
 }
