@@ -29,6 +29,7 @@
 #include "utils/formatting.h"
 #include "utils/guc.h"
 #include "utils/memutils.h"
+#include "utils/syscache.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "storage/gp_compress.h"
@@ -1365,30 +1366,57 @@ reloptions_has_opt(List *opts, const char *name)
 List *
 build_ao_rel_storage_opts(List *opts, Relation rel)
 {
-	if (!reloptions_has_opt(opts, "appendonly"))
-		opts = lappend(opts, makeDefElem("appendonly", (Node *) makeString("true")));
+	Oid			relid = RelationGetRelid(rel);
+	HeapTuple	tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
 
-	if (!reloptions_has_opt(opts, "blocksize"))
-		opts = lappend(opts, makeDefElem("blocksize", (Node *) makeInteger(rel->rd_appendonly->blocksize)));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for relation %u", relid);
 
-	if (!reloptions_has_opt(opts, "compresslevel"))
-		opts = lappend(opts, makeDefElem("compresslevel", (Node *) makeInteger(rel->rd_appendonly->compresslevel)));
+	bool		isnull;
+	Datum		reloptions = SysCacheGetAttr(RELOID, tuple, Anum_pg_class_reloptions, &isnull);
 
-	if (!reloptions_has_opt(opts, "checksum"))
-		opts = lappend(opts, makeDefElem("checksum", (Node *) makeInteger(rel->rd_appendonly->checksum)));
-
-	if (!reloptions_has_opt(opts, "compresstype"))
+	if (PointerIsValid(DatumGetPointer(reloptions)))
 	{
-		char *compresstype = rel->rd_appendonly->compresstype.data;
-		compresstype = (compresstype && compresstype[0]) ? pnstrdup(compresstype, strlen(compresstype)) : "none";
-		opts = lappend(opts, makeDefElem("compresstype", (Node *) makeString(compresstype)));
+		ArrayType  *array = DatumGetArrayTypeP(reloptions);
+		Datum	   *oldoptions;
+		List	   *newopts = NIL;
+		int			noldoptions;
+		int			i;
+
+		deconstruct_array(array, TEXTOID, -1, false, 'i',
+						  &oldoptions, NULL, &noldoptions);
+
+		for (i = 0; i < noldoptions; i++)
+		{
+			ListCell   *cell;
+			text	   *oldoption = DatumGetTextP(oldoptions[i]);
+			char	   *text_str = VARDATA(oldoption);
+			int			text_len = VARSIZE(oldoption) - VARHDRSZ;
+
+			foreach(cell, opts)
+			{
+				DefElem    *def = (DefElem *) lfirst(cell);
+				int			kw_len = strlen(def->defname);
+
+				if (text_len > kw_len && text_str[kw_len] == '=' &&
+					pg_strncasecmp(text_str, def->defname, kw_len) == 0)
+					break;
+			}
+
+			if (!cell) {
+				char	   *equal = strchr(text_str, '=');
+
+				if (equal) {
+					text_str[equal - text_str] = '\0';
+					newopts = lappend(newopts, makeDefElem(text_str, (Node *) makeString(equal + 1)));
+				}
+			}
+		}
+
+		opts = list_concat(opts, newopts);
 	}
 
-	if (!reloptions_has_opt(opts, "orientation"))
-	{
-		char *orientation = rel->rd_appendonly->columnstore ? "column" : "row";
-		opts = lappend(opts, makeDefElem("orientation", (Node *) makeString(orientation)));
-	}
+	ReleaseSysCache(tuple);
 
 	return opts;
 }
