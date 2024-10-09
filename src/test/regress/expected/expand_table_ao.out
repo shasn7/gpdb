@@ -860,7 +860,7 @@ from gp_distribution_policy where localoid = 't_9526'::regclass::oid;
 select blocksize,compresslevel,checksum,compresstype,columnstore from pg_appendonly where relid='t_9526'::regclass::oid;
  blocksize | compresslevel | checksum | compresstype | columnstore 
 -----------+---------------+----------+--------------+-------------
-     32768 |             0 | t        | none         | f
+     32768 |             0 | t        |              | f
 (1 row)
 
 -- set back
@@ -899,7 +899,7 @@ select relname, relstorage from pg_class where relname = 't_9527';
 select blocksize,compresslevel,checksum,compresstype,columnstore from pg_appendonly where relid='t_9527'::regclass::oid;
  blocksize | compresslevel | checksum | compresstype | columnstore 
 -----------+---------------+----------+--------------+-------------
-     32768 |             0 | t        | none         | f
+     32768 |             0 | t        |              | f
 (1 row)
 
 -- set back
@@ -932,7 +932,7 @@ select relname, relstorage from pg_class where relname = 't_9528';
 select blocksize,compresslevel,checksum,compresstype,columnstore from pg_appendonly where relid='t_9528'::regclass::oid;
  blocksize | compresslevel | checksum | compresstype | columnstore 
 -----------+---------------+----------+--------------+-------------
-     32768 |             0 | t        | none         | f
+     32768 |             0 | t        |              | f
 (1 row)
 
 -- set back
