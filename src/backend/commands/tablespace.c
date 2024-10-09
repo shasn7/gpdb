@@ -1532,7 +1532,8 @@ check_temp_tablespaces(char **newval, void **extra, GucSource source)
 	char	   *rawname;
 	List	   *namelist;
 
-	/* If encountered fallback, return empty extra*/
+	/* If a fallback string is encountered, set numSpcs = 0 to use
+     * temp_tablespaces instead. */
 	if (strcmp(*newval, TEMP_TABLESPACES_FALLBACK_VALUE) == 0) {
 		temp_tablespaces_extra *myextra;
 
