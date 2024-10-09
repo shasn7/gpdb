@@ -820,6 +820,6 @@ extern void DispatchSyncPGVariableExplicit(struct config_generic * gconfig);
 extern StdRdOptions *defaultStdRdOptions(char relkind);
 
 /* Default value for temp_spill_files_tablespaces GUC from commands/tablespace.c */
-#define TEMP_TABLESPACES_FALLBACK_VALUE "__EMPTY__"
+#define TEMP_TABLESPACES_FALLBACK_VALUE "__empty__"
 
 #endif   /* GUC_H */
