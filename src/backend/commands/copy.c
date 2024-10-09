@@ -161,6 +161,11 @@ static uint64 CopyTo(CopyState cstate);
 static uint64 CopyFrom(CopyState cstate);
 static uint64 CopyDispatchOnSegment(CopyState cstate, const CopyStmt *stmt);
 static uint64 CopyToQueryOnSegment(CopyState cstate);
+
+static void CopyFromUpdateAOInsertCountInPartitions(HTAB *partition_hash,
+									HTAB *tupcounts_ht, List *ao_segnos);
+static int64 CopyFromGetTupCount(HTAB *ht, Oid relid, bool *found);
+static void CopyFromUpdateAOInsertCount(ResultRelInfo *resultRelInfo, int64 tupcount);
 static void CopyFromInsertBatch(CopyState cstate, EState *estate,
 					CommandId mycid, int hi_options,
 					ResultRelInfo *resultRelInfo, TupleTableSlot *myslot,
@@ -4400,58 +4405,21 @@ CopyFrom(CopyState cstate)
 
 			if (relstorage_is_ao(RelinfoGetStorage(resultRelInfo)))
 			{
-				int64 tupcount;
+				int64 tupcount = 0;
 
 				if (cdbCopy->aotupcounts)
 				{
 					HTAB *ht = cdbCopy->aotupcounts;
-					struct {
-						Oid relid;
-						int64 tupcount;
-					} *ao;
 					bool found;
 					Oid relid = RelationGetRelid(resultRelInfo->ri_RelationDesc);
 
-					ao = hash_search(ht, &relid, HASH_FIND, &found);
-					if (found)
-						tupcount = ao->tupcount;
-				
-						if (resultRelInfo->ri_partition_hash)
-						{
-							HASH_SEQ_STATUS hash_seq_status;
-							ResultPartHashEntry *entry;
-							ResultRelInfo *partInfo;
-
-							hash_seq_init(&hash_seq_status, resultRelInfo->ri_partition_hash);
-							while ((entry = hash_seq_search(&hash_seq_status)) != NULL)
-							{
-								partInfo = &entry->resultRelInfo;
-								
-								if (relstorage_is_ao(RelinfoGetStorage(partInfo)))
-								{
-									struct {
-										Oid relid;
-										int64 tupcount;
-									} *partAo;
-									bool partFound;
-
-									Oid partRelid = RelationGetRelid(partInfo->ri_RelationDesc);
-									partAo = hash_search(ht, &partRelid, HASH_FIND, &partFound);
-									if (partFound)
-									{
-										uint64 partTupcount = partAo->tupcount;
-										ResultRelInfoSetSegno(partInfo, cstate->ao_segnos);
-										if (partInfo->ri_aoInsertDesc)
-											partInfo->ri_aoInsertDesc->insertCount += partTupcount;
-										if (partInfo->ri_aocsInsertDesc)
-											partInfo->ri_aocsInsertDesc->insertCount += partTupcount;
-									}
-								}
-							/* No need for hash_seq_term() since we iterated to end. */
-							}
-						}
-					else
-						tupcount = 0;
+					tupcount = CopyFromGetTupCount(ht, relid, &found);
+					if (found && resultRelInfo->ri_partition_hash)
+					{
+						CopyFromUpdateAOInsertCountInPartitions(
+							resultRelInfo->ri_partition_hash,
+							ht, cstate->ao_segnos);
+					}
 				}
 				else
 				{
@@ -4461,10 +4429,7 @@ CopyFrom(CopyState cstate)
 				/* find out which segnos the result rels in the QE's used */
 				ResultRelInfoSetSegno(resultRelInfo, cstate->ao_segnos);
 
-				if (resultRelInfo->ri_aoInsertDesc)
-					resultRelInfo->ri_aoInsertDesc->insertCount += tupcount;
-				if (resultRelInfo->ri_aocsInsertDesc)
-					resultRelInfo->ri_aocsInsertDesc->insertCount += tupcount;
+				CopyFromUpdateAOInsertCount(resultRelInfo, tupcount);
 			}
 		}
 	}
@@ -4507,6 +4472,68 @@ CopyFrom(CopyState cstate)
 
 	return processed;
 }
+
+/*
+ * A subroutine to update the insert counts in all partitions for AO relations.
+ */
+static void CopyFromUpdateAOInsertCountInPartitions(HTAB *partition_hash, 
+													HTAB *tupcounts_ht,
+													List *ao_segnos)
+{
+	HASH_SEQ_STATUS hash_seq_status;
+	ResultPartHashEntry *entry;
+
+	hash_seq_init(&hash_seq_status, partition_hash);
+	while ((entry = hash_seq_search(&hash_seq_status)) != NULL)
+	{
+		ResultRelInfo *partInfo = &entry->resultRelInfo;
+
+		if (relstorage_is_ao(RelinfoGetStorage(partInfo)))
+		{
+			bool partFound;
+			Oid partRelid = RelationGetRelid(partInfo->ri_RelationDesc);
+			uint64 partTupcount = CopyFromGetTupCount(tupcounts_ht,
+													  partRelid, &partFound);
+
+			if (partFound)
+			{
+				ResultRelInfoSetSegno(partInfo, ao_segnos);
+				CopyFromUpdateAOInsertCount(partInfo, partTupcount);
+			}
+		}
+	}
+}
+
+/*
+ * Fetches the tuple count for a given relation from the hash table.
+ * The `found` parameter is set by `hash_search`, which performs
+ * the lookup in the hash table. Returns the tuple count if found,
+ * otherwise returns 0.
+ */
+static int64 CopyFromGetTupCount(HTAB *ht, Oid relid, bool *found)
+{
+	struct {
+		Oid relid;
+		int64 tupcount;
+	} *ao;
+
+	ao = hash_search(ht, &relid, HASH_FIND, found);
+	return (*found) ? ao->tupcount : 0;
+}
+
+/*
+ * Increments the insert count for AO insert descriptors 
+ * by adding the `tupcount` value.
+ */
+static void CopyFromUpdateAOInsertCount(ResultRelInfo *resultRelInfo,
+										int64 tupcount)
+{
+	if (resultRelInfo->ri_aoInsertDesc)
+		resultRelInfo->ri_aoInsertDesc->insertCount += tupcount;
+	if (resultRelInfo->ri_aocsInsertDesc)
+		resultRelInfo->ri_aocsInsertDesc->insertCount += tupcount;
+}
+
 
 /*
  * A subroutine of CopyFrom, to write the current batch of buffered heap
