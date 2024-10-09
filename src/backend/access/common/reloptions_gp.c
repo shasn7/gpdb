@@ -24,7 +24,6 @@
 #include "access/reloptions.h"
 #include "cdb/cdbappendonlyam.h"
 #include "cdb/cdbvars.h"
-#include "commands/tablecmds.h"
 #include "utils/array.h"
 #include "utils/builtins.h"
 #include "utils/formatting.h"
@@ -1366,16 +1365,27 @@ reloptions_has_opt(List *opts, const char *name)
 List *
 build_ao_rel_storage_opts(List *opts, Relation rel)
 {
-	ListCell *lc;
-	List	 *res = opts;
+	if (!reloptions_has_opt(opts, "blocksize"))
+		opts = lappend(opts, makeDefElem("blocksize", (Node *) makeInteger(rel->rd_appendonly->blocksize)));
 
-	foreach(lc, reloptions_list(RelationGetRelid(rel)))
+	if (!reloptions_has_opt(opts, "compresslevel"))
+		opts = lappend(opts, makeDefElem("compresslevel", (Node *) makeInteger(rel->rd_appendonly->compresslevel)));
+
+	if (!reloptions_has_opt(opts, "checksum"))
+		opts = lappend(opts, makeDefElem("checksum", (Node *) makeInteger(rel->rd_appendonly->checksum)));
+
+	if (!reloptions_has_opt(opts, "compresstype"))
 	{
-		DefElem *de = lfirst(lc);
-
-		if (!reloptions_has_opt(opts, de->defname))
-			res = lappend(res, de);
+		char *compresstype = rel->rd_appendonly->compresstype.data;
+		compresstype = (compresstype && compresstype[0]) ? pnstrdup(compresstype, strlen(compresstype)) : "none";
+		opts = lappend(opts, makeDefElem("compresstype", (Node *) makeString(compresstype)));
 	}
 
-	return res;
+	if (!reloptions_has_opt(opts, "orientation"))
+	{
+		char *orientation = rel->rd_appendonly->columnstore ? "column" : "row";
+		opts = lappend(opts, makeDefElem("orientation", (Node *) makeString(orientation)));
+	}
+
+	return opts;
 }
