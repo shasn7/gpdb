@@ -15,8 +15,8 @@
 -- s/Executor memory: \d+\w? bytes/Executor memory: ### bytes/
 -- m/Memory used:\s+\d+\w?B/
 -- s/Memory used:\s+\d+\w?B/Memory used:  ###B/
--- m/\d+\w? bytes max/
--- s/\d+\w? bytes max/### bytes max/
+-- m/\d+\w? bytes max/g
+-- s/\d+\w? bytes max/### bytes max/g
 -- end_matchsubs
 CREATE TEMP TABLE empty_table(a int);
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
