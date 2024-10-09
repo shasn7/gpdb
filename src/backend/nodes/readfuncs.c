@@ -337,7 +337,7 @@ _readQuery(void)
 	READ_NODE_FIELD(constraintDeps);
     READ_NODE_FIELD(withCheckOptions);
     local_node->intoPolicy = NULL;
-    READ_ENUM_FIELD(parentStmtType, ParentStmtType);
+    READ_UINT_FIELD(parentStmtType); Assert(local_node->parentStmtType <= PARENTSTMTTYPE_REFRESH_MATVIEW);
     READ_LOCATION_FIELD(stmt_location);
     READ_LOCATION_FIELD(stmt_len);
 
