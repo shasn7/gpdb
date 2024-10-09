@@ -108,7 +108,7 @@ char	   *default_tablespace = NULL;
 char	   *temp_tablespaces = NULL;
 char	   *temp_spill_files_tablespaces = NULL;
 
-#define TEMP_TABLESPACES_FALLBACK_VALUE "__FALLBACK__"
+#define TEMP_TABLESPACES_FALLBACK_VALUE "__EMPTY__"
 
 
 static void create_tablespace_directories(const char *location,

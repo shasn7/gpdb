@@ -136,7 +136,7 @@ extern int	CommitDelay;
 extern int	CommitSiblings;
 extern char *default_tablespace;
 
-#define TEMP_TABLESPACES_FALLBACK_VALUE "__FALLBACK__"
+#define TEMP_TABLESPACES_FALLBACK_VALUE "__EMPTY__"
 extern char *temp_tablespaces;
 extern char *temp_spill_files_tablespaces;
 
