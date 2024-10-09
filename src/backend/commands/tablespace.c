@@ -1535,7 +1535,7 @@ check_temp_tablespaces(char **newval, void **extra, GucSource source)
 	List	   *namelist;
 
 	/* If encountered fallback, return empty extra*/
-	if (strcmp(*newval, TEMP_TABLESPACES_FALLBACK_VALUE)) {
+	if (strcmp(*newval, TEMP_TABLESPACES_FALLBACK_VALUE) == 0) {
 		temp_tablespaces_extra *myextra;
 
 		myextra = malloc(offsetof(temp_tablespaces_extra, tblSpcs));
