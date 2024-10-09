@@ -417,7 +417,6 @@ $$ LANGUAGE plpgsql;
 
 --
 -- Global GUC value tests:
--- FIXME: We shouldn't be forced to use \c to update GUCs on segments.
 --
 
 -- Both files and the table should be in the default tablespace.
@@ -425,7 +424,6 @@ $$ LANGUAGE plpgsql;
 \! gpconfig -r temp_tablespaces
 \! gpconfig -r temp_spill_files_tablespaces
 \! gpstop -u
-\c
 -- end_ignore
 SELECT * FROM gp_tablespace_file_report(1);
 
@@ -434,7 +432,6 @@ SELECT * FROM gp_tablespace_file_report(1);
 \! gpconfig -c temp_tablespaces -v 'temp_tables'
 \! gpconfig -r temp_spill_files_tablespaces
 \! gpstop -u
-\c
 -- end_ignore
 SELECT * FROM gp_tablespace_file_report(1);
 
@@ -443,7 +440,6 @@ SELECT * FROM gp_tablespace_file_report(1);
 \! gpconfig -r temp_tablespaces
 \! gpconfig -c temp_spill_files_tablespaces -v 'temp_files0'
 \! gpstop -u
-\c
 -- end_ignore
 SELECT * FROM gp_tablespace_file_report(1);
 
@@ -452,7 +448,6 @@ SELECT * FROM gp_tablespace_file_report(1);
 \! gpconfig -c temp_tablespaces -v 'temp_tables'
 \! gpconfig -c temp_spill_files_tablespaces -v 'temp_files0'
 \! gpstop -u
-\c
 -- end_ignore
 SELECT * FROM gp_tablespace_file_report(1);
 
@@ -462,7 +457,6 @@ SELECT * FROM gp_tablespace_file_report(1);
 \! gpconfig -r 'temp_tablespaces'
 \! gpconfig -c temp_spill_files_tablespaces -v 'temp_files0','temp_files1','temp_files2','temp_files3'
 \! gpstop -u
-\c
 -- end_ignore
 SELECT * FROM gp_tablespace_file_report(4);
 
@@ -471,7 +465,6 @@ SELECT * FROM gp_tablespace_file_report(4);
 \! gpconfig -c temp_tablespaces -v 'temp_tables'
 \! gpconfig -c temp_spill_files_tablespaces -v '""'
 \! gpstop -u
-\c
 -- end_ignore
 SELECT * FROM gp_tablespace_file_report(1);
 
@@ -480,7 +473,6 @@ SELECT * FROM gp_tablespace_file_report(1);
 \! gpconfig -c temp_tablespaces -v 'temp_tables'
 \! gpconfig -c temp_spill_files_tablespaces -v 'pg_default'
 \! gpstop -u
-\c
 -- end_ignore
 SELECT * FROM gp_tablespace_file_report(1);
 
@@ -489,7 +481,6 @@ SELECT * FROM gp_tablespace_file_report(1);
 \! gpconfig -r temp_tablespaces
 \! gpconfig -r temp_spill_files_tablespaces
 \! gpstop -u
-\c
 -- end_ignore
 
 --

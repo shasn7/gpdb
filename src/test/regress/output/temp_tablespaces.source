@@ -592,7 +592,6 @@ END;
 $$ LANGUAGE plpgsql;
 --
 -- Global GUC value tests:
--- FIXME: We shouldn't be forced to use \c to update GUCs on segments.
 --
 -- Both files and the table should be in the default tablespace.
 -- start_ignore

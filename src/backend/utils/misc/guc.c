@@ -135,8 +135,11 @@ extern bool Log_disconnections;
 extern int	CommitDelay;
 extern int	CommitSiblings;
 extern char *default_tablespace;
+
+#define TEMP_TABLESPACES_FALLBACK_VALUE "__FALLBACK__"
 extern char *temp_tablespaces;
 extern char *temp_spill_files_tablespaces;
+
 extern bool ignore_checksum_failure;
 extern bool synchronize_seqscans;
 extern char *SSLCipherSuites;
@@ -2883,7 +2886,7 @@ static struct config_string ConfigureNamesString[] =
 			GUC_LIST_INPUT | GUC_LIST_QUOTE
 		},
 		&temp_spill_files_tablespaces,
-		"",
+		TEMP_TABLESPACES_FALLBACK_VALUE,
 		check_temp_tablespaces, assign_temp_spill_files_tablespaces, NULL
 	},
 

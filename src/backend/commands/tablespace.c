@@ -108,6 +108,8 @@ char	   *default_tablespace = NULL;
 char	   *temp_tablespaces = NULL;
 char	   *temp_spill_files_tablespaces = NULL;
 
+#define TEMP_TABLESPACES_FALLBACK_VALUE "__FALLBACK__"
+
 
 static void create_tablespace_directories(const char *location,
 							  const Oid tablespaceoid);
@@ -1531,6 +1533,18 @@ check_temp_tablespaces(char **newval, void **extra, GucSource source)
 {
 	char	   *rawname;
 	List	   *namelist;
+
+	/* If encountered fallback, return empty extra*/
+	if (strcmp(*newval, TEMP_TABLESPACES_FALLBACK_VALUE)) {
+		temp_tablespaces_extra *myextra;
+
+		myextra = malloc(offsetof(temp_tablespaces_extra, tblSpcs));
+		if (!myextra)
+			return false;
+		myextra->numSpcs = 0;
+		*extra = (void *) myextra;
+		return true;
+	}
 
 	/* Need a modifiable copy of string */
 	rawname = pstrdup(*newval);
