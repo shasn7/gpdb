@@ -195,3 +195,169 @@ ORDER BY index;
 -- Drop AO and aux tables
 DROP TABLE ao_table;
 
+-- Test the fix: Adding data to a partitioned AO table using `COPY FROM`  
+-- does not change the `tupcount` in the segment table on the QD.
+CREATE OR REPLACE FUNCTION get_total_tupcount(table_name text)
+RETURNS bigint AS $$
+DECLARE
+    aoseg_table_name text;
+    tupcount_result bigint;
+BEGIN
+    -- Get the AO segment table name for the given partition
+    SELECT (n.nspname || '.' || c.relname) INTO aoseg_table_name
+    FROM pg_appendonly a
+        JOIN pg_class c ON c.oid = a.segrelid
+        JOIN pg_namespace n ON c.relnamespace = n.oid
+    WHERE a.relid = table_name::regclass::oid;
+
+    -- Sum tupcount from all segments
+    EXECUTE format('SELECT SUM(tupcount) FROM %s', aoseg_table_name)
+        INTO tupcount_result;
+
+    RETURN tupcount_result;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION get_tupcounts_for_partitions(main_table_name text)
+RETURNS TABLE (table_name text, tupcount bigint)
+AS $$
+BEGIN
+    -- Return main table tupcount first
+    RETURN QUERY
+    SELECT 
+        main_table_name::text AS table_name, 
+        get_total_tupcount(main_table_name) AS tupcount;
+
+    -- Return partition name and tupcount for each partition
+    RETURN QUERY 
+    SELECT 
+        p.partitiontablename::text, 
+        get_total_tupcount(p.partitiontablename)
+    FROM pg_partitions p
+    WHERE p.tablename = main_table_name
+    ORDER BY p.partitiontablename;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TABLE t_row (id int)
+    WITH (appendoptimized=true, orientation=row) DISTRIBUTED BY (id);
+
+CREATE TABLE t_col (id int)
+    WITH (appendoptimized=true, orientation=column) DISTRIBUTED BY (id);
+
+CREATE TABLE t_row_lev1 (id int)
+    WITH (appendoptimized=true, orientation=row) DISTRIBUTED BY (id)
+    PARTITION BY RANGE (id) (START (1) INCLUSIVE END (8) INCLUSIVE EVERY (4));
+
+CREATE TABLE t_col_lev1 (id int)
+    WITH (appendoptimized=true, orientation=column) DISTRIBUTED BY (id)
+    PARTITION BY RANGE (id) (START (1) INCLUSIVE END (8) INCLUSIVE EVERY (4));
+
+CREATE TABLE t_row_lev2 (id int, data int)
+    WITH (appendoptimized=true, orientation=row) DISTRIBUTED BY (id)
+    PARTITION BY RANGE (id) 
+    SUBPARTITION BY RANGE (data) SUBPARTITION TEMPLATE 
+        (START (101) INCLUSIVE END (104) INCLUSIVE EVERY (2))
+(START (1) INCLUSIVE END (8) INCLUSIVE EVERY (4));
+
+CREATE TABLE t_col_lev2 (id int, data int)
+    WITH (appendoptimized=true, orientation=column) DISTRIBUTED BY (id)
+    PARTITION BY RANGE (id) 
+    SUBPARTITION BY RANGE (data) SUBPARTITION TEMPLATE 
+        (START (101) INCLUSIVE END (104) INCLUSIVE EVERY (2))
+(START (1) INCLUSIVE END (8) INCLUSIVE EVERY (4));
+
+
+-- Test copying data to an empty table
+COPY t_row (id) FROM stdin;
+1
+2
+3
+4
+5
+\.
+COPY t_col (id) FROM stdin;
+1
+2
+3
+4
+5
+\.
+COPY t_row_lev1 (id) FROM stdin;
+1
+2
+3
+4
+5
+\.
+COPY t_col_lev1 (id) FROM stdin;
+1
+2
+3
+4
+5
+\.
+COPY t_row_lev2 (id, data) FROM stdin;
+1	101
+2	102
+3	103
+4	104
+5	101
+\.
+COPY t_col_lev2 (id, data) FROM stdin;
+1	101
+2	102
+3	103
+4	104
+5	101
+\.
+
+SELECT * FROM get_tupcounts_for_partitions('t_row');
+SELECT * FROM get_tupcounts_for_partitions('t_col');
+SELECT * FROM get_tupcounts_for_partitions('t_row_lev1');
+SELECT * FROM get_tupcounts_for_partitions('t_col_lev1');
+SELECT * FROM get_tupcounts_for_partitions('t_row_lev2');
+SELECT * FROM get_tupcounts_for_partitions('t_col_lev2');
+
+-- Test copying data to a non-empty table
+COPY t_row (id) FROM stdin;
+6
+7
+8
+\.
+COPY t_col (id) FROM stdin;
+6
+7
+8
+\.
+COPY t_row_lev1 (id) FROM stdin;
+6
+7
+8
+\.
+COPY t_col_lev1 (id) FROM stdin;
+6
+7
+8
+\.
+COPY t_row_lev2 (id, data) FROM stdin;
+6	102
+7	103
+8	104
+\.
+COPY t_col_lev2 (id, data) FROM stdin;
+6	102
+7	103
+8	104
+\.
+
+SELECT * FROM get_tupcounts_for_partitions('t_row');
+SELECT * FROM get_tupcounts_for_partitions('t_col');
+SELECT * FROM get_tupcounts_for_partitions('t_row_lev1');
+SELECT * FROM get_tupcounts_for_partitions('t_col_lev1');
+SELECT * FROM get_tupcounts_for_partitions('t_row_lev2');
+SELECT * FROM get_tupcounts_for_partitions('t_col_lev2');
+
+DROP TABLE t_row, t_col, t_row_lev1, t_col_lev1, t_row_lev2, t_col_lev2;
+DROP FUNCTION get_total_tupcount(text);
+DROP FUNCTION get_tupcounts_for_partitions(text);
