@@ -1532,16 +1532,10 @@ check_temp_tablespaces(char **newval, void **extra, GucSource source)
 	char	   *rawname;
 	List	   *namelist;
 
-	/* If a fallback string is encountered, set numSpcs = 0 to use
+	/* If a fallback string is encountered, set *extra = NULL to use
      * temp_tablespaces instead. */
 	if (strcmp(*newval, TEMP_TABLESPACES_FALLBACK_VALUE) == 0) {
-		temp_tablespaces_extra *myextra;
-
-		myextra = malloc(offsetof(temp_tablespaces_extra, tblSpcs));
-		if (!myextra)
-			return false;
-		myextra->numSpcs = 0;
-		*extra = (void *) myextra;
+		*extra = NULL;
 		return true;
 	}
 
