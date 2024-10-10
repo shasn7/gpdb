@@ -53,11 +53,15 @@ drop table sort_error_test2;
 --
 
 create table slice_test(i int, j int) distributed by (i);
+create table slice_test2(i int, j int) distributed by (i);
+insert into slice_test select i, i from generate_series(0, 100) i;
+insert into slice_test select i, 2*i from generate_series(0, 100) i;
+insert into slice_test2 values (0, 1);
 
 -- explain_processing_off
 -- create duplicate subplan in QE slice
 explain (analyze, timing off, costs off) select a.i from slice_test a
-  where a.j = (select b.i from slice_test b where a.i = 0)
+  where a.j = (select b.i from slice_test2 b where a.i = 0)
     and a.i = a.j;
 
 -- create multiple initplans in slice 0 (should be printed as two slices)
@@ -68,3 +72,4 @@ explain (analyze, timing off, costs off)
 -- explain_processing_on
 
 drop table slice_test;
+drop table slice_test2;

@@ -93,32 +93,37 @@ drop table sort_error_test2;
 -- Test correct slice stats reporting in case of duplicated subplans
 --
 create table slice_test(i int, j int) distributed by (i);
+create table slice_test2(i int, j int) distributed by (i);
+insert into slice_test select i, i from generate_series(0, 100) i;
+insert into slice_test select i, 2*i from generate_series(0, 100) i;
+insert into slice_test2 values (0, 1);
 -- explain_processing_off
 -- create duplicate subplan in QE slice
 explain (analyze, timing off, costs off) select a.i from slice_test a
-  where a.j = (select b.i from slice_test b where a.i = 0)
+  where a.j = (select b.i from slice_test2 b where a.i = 0)
     and a.i = a.j;
                                       QUERY PLAN                                      
 --------------------------------------------------------------------------------------
- Result (actual rows=0 loops=1)
+ Result (actual rows=2 loops=1)
    Filter: (a.j = (SubPlan 1))
-   ->  Gather Motion 3:1  (slice1; segments: 3) (actual rows=0 loops=1)
-         ->  Seq Scan on slice_test a (actual rows=0 loops=1)
+   ->  Gather Motion 3:1  (slice1; segments: 3) (actual rows=102 loops=1)
+         ->  Seq Scan on slice_test a (actual rows=39 loops=1)
                Filter: (i = j)
+               Rows Removed by Filter: 37
    SubPlan 1
-     ->  Result (never executed)
+     ->  Result (actual rows=0 loops=102)
            One-Time Filter: (a.i = 0)
-           ->  Materialize (actual rows=0 loops=1)
-                 ->  Gather Motion 3:1  (slice2; segments: 3) (actual rows=0 loops=1)
-                       ->  Seq Scan on slice_test b (actual rows=0 loops=1)
+           ->  Materialize (actual rows=1 loops=3)
+                 ->  Gather Motion 3:1  (slice2; segments: 3) (actual rows=1 loops=1)
+                       ->  Seq Scan on slice_test2 b (actual rows=1 loops=1)
  Optimizer: GPORCA
- Planning Time: 5.990 ms
-   (slice0)    Executor memory: 47K bytes.  Work_mem: 17K bytes max.
+ Planning Time: 6.096 ms
+   (slice0)    Executor memory: 49K bytes.  Work_mem: 17K bytes max.
    (slice1)    Executor memory: 36K bytes avg x 3 workers, 36K bytes max (seg0).
    (slice2)    Executor memory: 37K bytes avg x 3 workers, 37K bytes max (seg0).
  Memory used:  128000kB
- Execution Time: 4.098 ms
-(18 rows)
+ Execution Time: 5.096 ms
+(19 rows)
 
 -- create multiple initplans in slice 0 (should be printed as two slices)
 explain (analyze, timing off, costs off)
@@ -145,3 +150,4 @@ explain (analyze, timing off, costs off)
 
 -- explain_processing_on
 drop table slice_test;
+drop table slice_test2;
