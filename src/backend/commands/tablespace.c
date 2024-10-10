@@ -1532,13 +1532,6 @@ check_temp_tablespaces(char **newval, void **extra, GucSource source)
 	char	   *rawname;
 	List	   *namelist;
 
-	/* If a fallback string is encountered, set *extra = NULL to use
-     * temp_tablespaces instead. */
-	if (strcmp(*newval, TEMP_TABLESPACES_FALLBACK_VALUE) == 0) {
-		*extra = NULL;
-		return true;
-	}
-
 	/* Need a modifiable copy of string */
 	rawname = pstrdup(*newval);
 

@@ -2883,7 +2883,7 @@ static struct config_string ConfigureNamesString[] =
 			GUC_LIST_INPUT | GUC_LIST_QUOTE
 		},
 		&temp_spill_files_tablespaces,
-		TEMP_TABLESPACES_FALLBACK_VALUE,
+		"",
 		check_temp_tablespaces, assign_temp_spill_files_tablespaces, NULL
 	},
 
