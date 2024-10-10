@@ -247,27 +247,31 @@ CREATE TABLE t_col (id int)
 
 CREATE TABLE t_row_lev1 (id int, data int)
     WITH (appendoptimized=true, orientation=row) DISTRIBUTED BY (id)
-    PARTITION BY LIST (data)
-        (PARTITION p1 VALUES (1, 2, 3, 4), PARTITION p2 VALUES (5, 6, 7, 8));
+    PARTITION BY RANGE (data)
+    (PARTITION p1 START (1) INCLUSIVE END (4) INCLUSIVE,
+     PARTITION p2 START (5) INCLUSIVE END (8) INCLUSIVE);
 
 CREATE TABLE t_col_lev1 (id int, data int)
     WITH (appendoptimized=true, orientation=column) DISTRIBUTED BY (id)
-    PARTITION BY LIST (data)
-        (PARTITION p1 VALUES (1, 2, 3, 4), PARTITION p2 VALUES (5, 6, 7, 8));
+    PARTITION BY RANGE (data)
+    (PARTITION p1 START (1) INCLUSIVE END (4) INCLUSIVE,
+     PARTITION p2 START (5) INCLUSIVE END (8) INCLUSIVE);
 
 CREATE TABLE t_row_lev2 (id int, data1 int, data2 int)
     WITH (appendoptimized=true, orientation=row) DISTRIBUTED BY (id)
-    PARTITION BY LIST (data1) 
+    PARTITION BY RANGE (data1)
         SUBPARTITION BY LIST (data2) SUBPARTITION TEMPLATE 
         (SUBPARTITION sp1 VALUES (1, 2), SUBPARTITION sp2 VALUES (3, 4))
-    (PARTITION p1 VALUES (1, 2, 3, 4), PARTITION p2 VALUES (5, 6, 7, 8));
+    (PARTITION p1 START (1) INCLUSIVE END (4) INCLUSIVE,
+     PARTITION p2 START (5) INCLUSIVE END (8) INCLUSIVE);
 
 CREATE TABLE t_col_lev2 (id int, data1 int, data2 int)
     WITH (appendoptimized=true, orientation=column) DISTRIBUTED BY (id)
-    PARTITION BY LIST (data1) 
+    PARTITION BY RANGE (data1)
         SUBPARTITION BY LIST (data2) SUBPARTITION TEMPLATE 
         (SUBPARTITION sp1 VALUES (1, 2), SUBPARTITION sp2 VALUES (3, 4))
-    (PARTITION p1 VALUES (1, 2, 3, 4), PARTITION p2 VALUES (5, 6, 7, 8));
+    (PARTITION p1 START (1) INCLUSIVE END (4) INCLUSIVE,
+     PARTITION p2 START (5) INCLUSIVE END (8) INCLUSIVE);
 
 -- Test copying data to an empty table
 COPY t_row (id) FROM stdin;
