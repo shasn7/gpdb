@@ -245,28 +245,29 @@ CREATE TABLE t_row (id int)
 CREATE TABLE t_col (id int)
     WITH (appendoptimized=true, orientation=column) DISTRIBUTED BY (id);
 
-CREATE TABLE t_row_lev1 (id int)
+CREATE TABLE t_row_lev1 (id int, data int)
     WITH (appendoptimized=true, orientation=row) DISTRIBUTED BY (id)
-    PARTITION BY RANGE (id) (START (1) INCLUSIVE END (8) INCLUSIVE EVERY (4));
+    PARTITION BY LIST (data)
+        (PARTITION p1 VALUES (1, 2, 3, 4), PARTITION p2 VALUES (5, 6, 7, 8));
 
-CREATE TABLE t_col_lev1 (id int)
+CREATE TABLE t_col_lev1 (id int, data int)
     WITH (appendoptimized=true, orientation=column) DISTRIBUTED BY (id)
-    PARTITION BY RANGE (id) (START (1) INCLUSIVE END (8) INCLUSIVE EVERY (4));
+    PARTITION BY LIST (data)
+        (PARTITION p1 VALUES (1, 2, 3, 4), PARTITION p2 VALUES (5, 6, 7, 8));
 
-CREATE TABLE t_row_lev2 (id int, data int)
+CREATE TABLE t_row_lev2 (id int, data1 int, data2 int)
     WITH (appendoptimized=true, orientation=row) DISTRIBUTED BY (id)
-    PARTITION BY RANGE (id) 
-    SUBPARTITION BY RANGE (data) SUBPARTITION TEMPLATE 
-        (START (101) INCLUSIVE END (104) INCLUSIVE EVERY (2))
-(START (1) INCLUSIVE END (8) INCLUSIVE EVERY (4));
+    PARTITION BY LIST (data1) 
+        SUBPARTITION BY LIST (data2) SUBPARTITION TEMPLATE 
+        (SUBPARTITION sp1 VALUES (1, 2), SUBPARTITION sp2 VALUES (3, 4))
+    (PARTITION p1 VALUES (1, 2, 3, 4), PARTITION p2 VALUES (5, 6, 7, 8));
 
-CREATE TABLE t_col_lev2 (id int, data int)
+CREATE TABLE t_col_lev2 (id int, data1 int, data2 int)
     WITH (appendoptimized=true, orientation=column) DISTRIBUTED BY (id)
-    PARTITION BY RANGE (id) 
-    SUBPARTITION BY RANGE (data) SUBPARTITION TEMPLATE 
-        (START (101) INCLUSIVE END (104) INCLUSIVE EVERY (2))
-(START (1) INCLUSIVE END (8) INCLUSIVE EVERY (4));
-
+    PARTITION BY LIST (data1) 
+        SUBPARTITION BY LIST (data2) SUBPARTITION TEMPLATE 
+        (SUBPARTITION sp1 VALUES (1, 2), SUBPARTITION sp2 VALUES (3, 4))
+    (PARTITION p1 VALUES (1, 2, 3, 4), PARTITION p2 VALUES (5, 6, 7, 8));
 
 -- Test copying data to an empty table
 COPY t_row (id) FROM stdin;
@@ -283,33 +284,33 @@ COPY t_col (id) FROM stdin;
 4
 5
 \.
-COPY t_row_lev1 (id) FROM stdin;
-1
-2
-3
-4
-5
+COPY t_row_lev1 (id, data) FROM stdin;
+1	1
+2	2
+3	3
+4	4
+5	5
 \.
-COPY t_col_lev1 (id) FROM stdin;
-1
-2
-3
-4
-5
+COPY t_col_lev1 (id, data) FROM stdin;
+1	1
+2	2
+3	3
+4	4
+5	5
 \.
-COPY t_row_lev2 (id, data) FROM stdin;
-1	101
-2	102
-3	103
-4	104
-5	101
+COPY t_row_lev2 (id, data1, data2) FROM stdin;
+1	1	1
+2	2	2
+3	3	3
+4	4	4
+5	5	1
 \.
-COPY t_col_lev2 (id, data) FROM stdin;
-1	101
-2	102
-3	103
-4	104
-5	101
+COPY t_col_lev2 (id, data1, data2) FROM stdin;
+1	1	1
+2	2	2
+3	3	3
+4	4	4
+5	5	1
 \.
 
 SELECT * FROM get_tupcounts_for_partitions('t_row');
@@ -330,25 +331,25 @@ COPY t_col (id) FROM stdin;
 7
 8
 \.
-COPY t_row_lev1 (id) FROM stdin;
-6
-7
-8
+COPY t_row_lev1 (id, data) FROM stdin;
+6	6
+7	7
+8	8
 \.
-COPY t_col_lev1 (id) FROM stdin;
-6
-7
-8
+COPY t_col_lev1 (id, data) FROM stdin;
+6	6
+7	7
+8	8
 \.
-COPY t_row_lev2 (id, data) FROM stdin;
-6	102
-7	103
-8	104
+COPY t_row_lev2 (id, data1, data2) FROM stdin;
+6	6	2
+7	7	3
+8	8	4
 \.
-COPY t_col_lev2 (id, data) FROM stdin;
-6	102
-7	103
-8	104
+COPY t_col_lev2 (id, data1, data2) FROM stdin;
+6	6	2
+7	7	3
+8	8	4
 \.
 
 SELECT * FROM get_tupcounts_for_partitions('t_row');
