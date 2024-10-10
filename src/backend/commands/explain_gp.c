@@ -663,10 +663,8 @@ cdbexplain_recvExecStats(struct PlanState *planstate,
 	 * (see comment for cdbexplain_depositSliceStats)
 	 */
 	if (sliceIndex == 0 || !showstatctx->slices[sliceIndex].workers)
-	{
 		for (imsgptr = 0; imsgptr < ctx.nmsgptr; imsgptr++)
 			cdbexplain_depositSliceStats(ctx.msgptrs[imsgptr], &ctx);
-	}
 
 	/* Transfer worker counts to SliceSummary. */
 	showstatctx->slices[sliceIndex].dispatchSummary = ds;
