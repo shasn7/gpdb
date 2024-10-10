@@ -4416,6 +4416,13 @@ CopyFrom(CopyState cstate)
 					tupcount = CopyFromGetTupCount(ht, relid, &found);
 					if (found && resultRelInfo->ri_partition_hash)
 					{
+						/*
+						 * Since `ri_partition_hash` contains information only
+						 * about leaf partitions, the counts will be updated only
+						 * for the lowest level partitions. This is fine as
+						 * there are no auxiliary segment tables for the 
+						 * intermediate level partitions.
+						 */
 						CopyFromUpdateAOInsertCountInPartitions(
 							resultRelInfo->ri_partition_hash,
 							ht, cstate->ao_segnos);
