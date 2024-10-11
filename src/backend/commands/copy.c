@@ -164,7 +164,6 @@ static uint64 CopyToQueryOnSegment(CopyState cstate);
 
 static void CopyFromUpdateAOInsertCountInPartitions(HTAB *partition_hash,
 									HTAB *tupcounts_ht, List *ao_segnos);
-static int64 CopyFromGetTupCount(HTAB *ht, Oid relid, bool *found);
 static void CopyFromUpdateAOInsertCount(ResultRelInfo *resultRelInfo, int64 tupcount);
 static void CopyFromInsertBatch(CopyState cstate, EState *estate,
 					CommandId mycid, int hi_options,
@@ -4410,10 +4409,12 @@ CopyFrom(CopyState cstate)
 				if (cdbCopy->aotupcounts)
 				{
 					HTAB *ht = cdbCopy->aotupcounts;
+					PQaoRelTupCount *ao;
 					bool found;
 					Oid relid = RelationGetRelid(resultRelInfo->ri_RelationDesc);
 
-					tupcount = CopyFromGetTupCount(ht, relid, &found);
+					ao = hash_search(ht, &relid, HASH_FIND, &found);
+					if (found) tupcount = ao->tupcount;
 					if (found && resultRelInfo->ri_partition_hash)
 					{
 						/*
@@ -4497,35 +4498,17 @@ static void CopyFromUpdateAOInsertCountInPartitions(HTAB *partition_hash,
 
 		if (relstorage_is_ao(RelinfoGetStorage(partInfo)))
 		{
-			bool partFound;
+			bool found;
+			PQaoRelTupCount *ao;
 			Oid partRelid = RelationGetRelid(partInfo->ri_RelationDesc);
-			uint64 partTupcount = CopyFromGetTupCount(tupcounts_ht,
-													  partRelid, &partFound);
-
-			if (partFound)
+			ao = hash_search(tupcounts_ht, &partRelid, HASH_FIND, &found);
+			if (found)
 			{
 				ResultRelInfoSetSegno(partInfo, ao_segnos);
-				CopyFromUpdateAOInsertCount(partInfo, partTupcount);
+				CopyFromUpdateAOInsertCount(partInfo, ao->tupcount);
 			}
 		}
 	}
-}
-
-/*
- * Fetches the tuple count for a given relation from the hash table.
- * The `found` parameter is set by `hash_search`, which performs
- * the lookup in the hash table. Returns the tuple count if found,
- * otherwise returns 0.
- */
-static int64 CopyFromGetTupCount(HTAB *ht, Oid relid, bool *found)
-{
-	struct {
-		Oid relid;
-		int64 tupcount;
-	} *ao;
-
-	ao = hash_search(ht, &relid, HASH_FIND, found);
-	return (*found) ? ao->tupcount : 0;
 }
 
 /*
