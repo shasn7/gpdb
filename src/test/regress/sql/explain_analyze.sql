@@ -66,6 +66,7 @@ explain (analyze, timing off, costs off) select a.i from slice_test a
   where a.j = (select b.i from slice_test2 b where a.i = 0 or b.i = 0)
     and a.i = a.j;
 
+-- checking this didn't break previous behavior
 -- create multiple initplans in slice 0 (should be printed as two slices)
 explain (analyze, timing off, costs off)
   select a.i from (select x::int as i, x::int / 5 as j from round(random() / 5) as x) a
