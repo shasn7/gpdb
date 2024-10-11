@@ -15,8 +15,10 @@
 -- s/Executor memory: \d+\w? bytes/Executor memory: ### bytes/
 -- m/Memory used:\s+\d+\w?B/
 -- s/Memory used:\s+\d+\w?B/Memory used:  ###B/
--- m/\d+\w? bytes max/g
--- s/\d+\w? bytes max/### bytes max/g
+-- m/\d+\w? bytes max \(seg\d+\)/
+-- s/\d+\w? bytes max \(seg\d+\)/### bytes max (seg#)/
+-- m/Work_mem: \d+\w? bytes max/
+-- s/Work_mem: \d+\w? bytes max/Work_mem: ### bytes max/
 -- end_matchsubs
 CREATE TEMP TABLE empty_table(a int);
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
@@ -99,7 +101,7 @@ insert into slice_test2 values (0, 1);
 -- explain_processing_off
 -- create duplicate subplan in QE slice
 explain (analyze, timing off, costs off) select a.i from slice_test a
-  where a.j = (select b.i from slice_test2 b where a.i = 0)
+  where a.j = (select b.i from slice_test2 b where a.i = 0 or b.i = 0)
     and a.i = a.j;
                                                 QUERY PLAN                                                 
 -----------------------------------------------------------------------------------------------------------
@@ -108,9 +110,9 @@ explain (analyze, timing off, costs off) select a.i from slice_test a
          Filter: ((j = (SubPlan 1)) AND ((SubPlan 1) = i))
          Rows Removed by Filter: 74
          SubPlan 1
-           ->  Result (actual rows=0 loops=78)
-                 One-Time Filter: (a.i = 0)
-                 ->  Materialize (actual rows=1 loops=6)
+           ->  Result (actual rows=1 loops=78)
+                 Filter: ((a.i = 0) OR (b.i = 0))
+                 ->  Materialize (actual rows=1 loops=80)
                        ->  Broadcast Motion 3:3  (slice2; segments: 3) (actual rows=1 loops=1)
                              ->  Seq Scan on slice_test2 b (actual rows=1 loops=1)
  Optimizer: Postgres-based planner
@@ -124,14 +126,13 @@ explain (analyze, timing off, costs off) select a.i from slice_test a
 
 -- create multiple initplans in slice 0 (should be printed as two slices)
 explain (analyze, timing off, costs off)
-  select a.i from (select x::int as i, x::int + 1 as j from round(random() / 5) as x) a
+  select a.i from (select x::int as i, x::int / 5 as j from round(random() / 5) as x) a
     where a.j = (select round(random() / 5)::int where a.i = 0)
       and a.i = a.j;
                                    QUERY PLAN                                    
 ---------------------------------------------------------------------------------
- Function Scan on round x (actual rows=0 loops=1)
-   Filter: (((SubPlan 1) = (x)::integer) AND (((x)::integer + 1) = (SubPlan 1)))
-   Rows Removed by Filter: 1
+ Function Scan on round x (actual rows=1 loops=1)
+   Filter: (((SubPlan 1) = (x)::integer) AND (((x)::integer / 5) = (SubPlan 1)))
    InitPlan 2 (returns $1)
      ->  Result (actual rows=1 loops=1)
    SubPlan 1

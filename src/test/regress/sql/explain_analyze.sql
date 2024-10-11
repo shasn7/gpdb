@@ -15,8 +15,10 @@
 -- s/Executor memory: \d+\w? bytes/Executor memory: ### bytes/
 -- m/Memory used:\s+\d+\w?B/
 -- s/Memory used:\s+\d+\w?B/Memory used:  ###B/
--- m/\d+\w? bytes max/g
--- s/\d+\w? bytes max/### bytes max/g
+-- m/\d+\w? bytes max \(seg\d+\)/
+-- s/\d+\w? bytes max \(seg\d+\)/### bytes max (seg#)/
+-- m/Work_mem: \d+\w? bytes max/
+-- s/Work_mem: \d+\w? bytes max/Work_mem: ### bytes max/
 -- end_matchsubs
 
 CREATE TEMP TABLE empty_table(a int);
@@ -61,12 +63,12 @@ insert into slice_test2 values (0, 1);
 -- explain_processing_off
 -- create duplicate subplan in QE slice
 explain (analyze, timing off, costs off) select a.i from slice_test a
-  where a.j = (select b.i from slice_test2 b where a.i = 0)
+  where a.j = (select b.i from slice_test2 b where a.i = 0 or b.i = 0)
     and a.i = a.j;
 
 -- create multiple initplans in slice 0 (should be printed as two slices)
 explain (analyze, timing off, costs off)
-  select a.i from (select x::int as i, x::int + 1 as j from round(random() / 5) as x) a
+  select a.i from (select x::int as i, x::int / 5 as j from round(random() / 5) as x) a
     where a.j = (select round(random() / 5)::int where a.i = 0)
       and a.i = a.j;
 -- explain_processing_on
