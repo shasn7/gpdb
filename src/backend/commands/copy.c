@@ -4409,24 +4409,27 @@ CopyFrom(CopyState cstate)
 				if (cdbCopy->aotupcounts)
 				{
 					HTAB *ht = cdbCopy->aotupcounts;
-					PQaoRelTupCount *ao;
 					bool found;
 					Oid relid = RelationGetRelid(resultRelInfo->ri_RelationDesc);
 
-					ao = hash_search(ht, &relid, HASH_FIND, &found);
-					if (found) tupcount = ao->tupcount;
-					if (found && resultRelInfo->ri_partition_hash)
+					PQaoRelTupCount *ao = hash_search(ht, &relid,
+													  HASH_FIND, &found);
+					if (found)
 					{
-						/*
-						 * Since `ri_partition_hash` contains information only
-						 * about leaf partitions, the counts will be updated only
-						 * for the lowest level partitions. This is fine as
-						 * there are no auxiliary segment tables for the 
-						 * intermediate level partitions.
-						 */
-						CopyFromUpdateAOInsertCountInPartitions(
-							resultRelInfo->ri_partition_hash,
-							ht, cstate->ao_segnos);
+						tupcount = ao->tupcount;
+						if (resultRelInfo->ri_partition_hash)
+						{
+							/*
+							* Since `ri_partition_hash` contains information only
+							* about leaf partitions, the counts will be updated only
+							* for the lowest level partitions. This is fine as
+							* there are no auxiliary segment tables for the 
+							* intermediate level partitions.
+							*/
+							CopyFromUpdateAOInsertCountInPartitions(
+								resultRelInfo->ri_partition_hash,
+								ht, cstate->ao_segnos);
+						}
 					}
 				}
 				else
@@ -4499,9 +4502,9 @@ static void CopyFromUpdateAOInsertCountInPartitions(HTAB *partition_hash,
 		if (relstorage_is_ao(RelinfoGetStorage(partInfo)))
 		{
 			bool found;
-			PQaoRelTupCount *ao;
 			Oid partRelid = RelationGetRelid(partInfo->ri_RelationDesc);
-			ao = hash_search(tupcounts_ht, &partRelid, HASH_FIND, &found);
+			PQaoRelTupCount *ao = hash_search(tupcounts_ht, &partRelid,
+											  HASH_FIND, &found);
 			if (found)
 			{
 				ResultRelInfoSetSegno(partInfo, ao_segnos);
