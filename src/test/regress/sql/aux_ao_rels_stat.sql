@@ -197,7 +197,7 @@ DROP TABLE ao_table;
 
 -- Test the fix: Adding data to a partitioned AO table using `COPY FROM`  
 -- does not change the `tupcount` in the segment table on the QD.
-CREATE OR REPLACE FUNCTION get_total_tupcount(table_name text)
+CREATE OR REPLACE FUNCTION get_total_tupcount(table_oid oid)
 RETURNS bigint AS $$
 DECLARE
     aoseg_table_name text;
@@ -205,10 +205,10 @@ DECLARE
 BEGIN
     -- Get the AO segment table name for the given partition
     SELECT (n.nspname || '.' || c.relname) INTO aoseg_table_name
-    FROM pg_appendonly a
-        JOIN pg_class c ON c.oid = a.segrelid
-        JOIN pg_namespace n ON c.relnamespace = n.oid
-    WHERE a.relid = table_name::regclass::oid;
+    FROM pg_appendonly AS a
+        JOIN pg_class AS c ON c.oid = a.segrelid
+        JOIN pg_namespace AS n ON c.relnamespace = n.oid
+    WHERE a.relid = table_oid;
 
     -- Sum tupcount from all segments
     EXECUTE format('SELECT SUM(tupcount) FROM %s', aoseg_table_name)
@@ -222,19 +222,19 @@ CREATE OR REPLACE FUNCTION get_tupcounts_for_partitions(main_table_name text)
 RETURNS TABLE (table_name text, tupcount bigint)
 AS $$
 BEGIN
-    -- Return main table tupcount first
+    -- Return main table tupcount in the current schema first
     RETURN QUERY
     SELECT 
         main_table_name::text AS table_name, 
-        get_total_tupcount(main_table_name) AS tupcount;
+        get_total_tupcount(main_table_name::regclass) AS tupcount;
 
-    -- Return partition name and tupcount for each partition
+    -- Return partition name and tupcount for each partition in the current schema
     RETURN QUERY 
     SELECT 
         p.partitiontablename::text, 
-        get_total_tupcount(p.partitiontablename)
-    FROM pg_partitions p
-    WHERE p.tablename = main_table_name
+        get_total_tupcount(p.partitiontablename::regclass)
+    FROM pg_partitions AS p
+    WHERE p.tablename = main_table_name AND p.schemaname = current_schema()
     ORDER BY p.partitiontablename;
 END;
 $$ LANGUAGE plpgsql;
@@ -364,5 +364,5 @@ SELECT * FROM get_tupcounts_for_partitions('t_row_lev2');
 SELECT * FROM get_tupcounts_for_partitions('t_col_lev2');
 
 DROP TABLE t_row, t_col, t_row_lev1, t_col_lev1, t_row_lev2, t_col_lev2;
-DROP FUNCTION get_total_tupcount(text);
+DROP FUNCTION get_total_tupcount(oid);
 DROP FUNCTION get_tupcounts_for_partitions(text);
