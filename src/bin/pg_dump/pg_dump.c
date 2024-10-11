@@ -155,9 +155,6 @@ static const CatalogId nilCatalogId = {0, 0};
 
 const char *EXT_PARTITION_NAME_POSTFIX = "_external_partition__";
 
-/* pg_class.relstorage value used in GPDB 6.x and below to mark external tables. */
-#define RELSTORAGE_EXTERNAL 'x'
-
 /* override for standard extra_float_digits setting */
 static bool have_extra_float_digits = false;
 static int	extra_float_digits;
@@ -2773,9 +2770,6 @@ makeTableDataInfo(DumpOptions *dopt, TableInfo *tbinfo)
 		return;
 	/* Skip FOREIGN TABLEs (no data to dump) */
 	if (tbinfo->relkind == RELKIND_FOREIGN_TABLE)
-		return;
-	/* Skip EXTERNAL TABLEs (like foreign tables in GPDB 6.x and below) */
-	if (tbinfo->relstorage == RELSTORAGE_EXTERNAL)
 		return;
 	/* Skip partitioned tables (data in partitions) */
 	if (tbinfo->relkind == RELKIND_PARTITIONED_TABLE)
@@ -6886,16 +6880,7 @@ getTables(Archive *fout, int *numTables)
 		else
 			tblinfo[i].parparent = true;
 
-		if (!tblinfo[i].parparent && tblinfo[i].parrelid != 0 && tblinfo[i].relstorage == 'x')
-		{
-			/*
-			 * Length of tmpStr is bigger than the sum of NAMEDATALEN
-			 * and the length of EXT_PARTITION_NAME_POSTFIX
-			 */
-			char tmpStr[500];
-			snprintf(tmpStr, sizeof(tmpStr), "%s%s", tblinfo[i].dobj.name, EXT_PARTITION_NAME_POSTFIX);
-			tblinfo[i].dobj.name = pg_strdup(tmpStr);
-		}
+		Assert(tblinfo[i].relstorage != 'x');
 
 		if (dopt->binary_upgrade)
 		{
@@ -10459,8 +10444,6 @@ dumpTableComment(Archive *fout, const TableInfo *tbinfo,
 		if (objsubid == 0)
 		{
 			resetPQExpBuffer(tag);
-			if (strcmp(reltypename, "EXTERNAL TABLE") == 0)
-				reltypename = "TABLE";
 			appendPQExpBuffer(tag, "%s %s.", reltypename,
 							  fmtId(tbinfo->dobj.namespace->dobj.name));
 			appendPQExpBuffer(tag, "%s ", fmtId(tbinfo->dobj.name));
@@ -16399,314 +16382,6 @@ dumpTable(Archive *fout, const TableInfo *tbinfo)
 	return;
 }
 
-static void
-dumpExternal(Archive *fout, const TableInfo *tbinfo, PQExpBuffer q, PQExpBuffer delq)
-{
-		DumpOptions *dopt = fout->dopt;
-		PGresult   *res;
-		char	   *urilocations;
-		char	   *execlocations;
-		char	   *location;
-		char	   *fmttype;
-		char	   *fmtopts;
-		char	   *command = NULL;
-		char	   *rejlim;
-		char	   *rejlimtype;
-		char	   *extencoding;
-		char	   *writable = NULL;
-		char	   *tmpstring = NULL;
-		char 	   *tabfmt = NULL;
-		char	   *customfmt = NULL;
-		bool		isweb = false;
-		bool		iswritable = false;
-		char	   *options;
-		char	   *logerrors = NULL;
-		char	   *on_clause;
-		char	   *qualrelname;
-		PQExpBuffer query = createPQExpBuffer();
-
-		qualrelname = pg_strdup(fmtQualifiedDumpable(tbinfo));
-
-		/*
-		 * DROP must be fully qualified in case same name appears in
-		 * pg_catalog
-		 */
-		appendPQExpBuffer(delq, "DROP EXTERNAL TABLE %s.",
-						  qualrelname);
-
-		/* Now get required information from pg_exttable */
-		if (fout->remoteVersion >= GPDB6_MAJOR_PGVERSION)
-		{
-			appendPQExpBuffer(query,
-					"SELECT x.urilocation, x.execlocation, x.fmttype, x.fmtopts, x.command, "
-						   "x.rejectlimit, x.rejectlimittype, "
-						   "CASE WHEN x.logerrors='f' THEN null ELSE x.logerrors::text END AS logerrors, "
-						   "pg_catalog.pg_encoding_to_char(x.encoding), "
-						   "x.writable, "
-						   "array_to_string(ARRAY( "
-						   "SELECT pg_catalog.quote_ident(option_name) || ' ' || "
-						   "pg_catalog.quote_literal(option_value) "
-						   "FROM pg_options_to_table(x.options) "
-						   "ORDER BY option_name"
-						   "), E',\n    ') AS options "
-					"FROM pg_catalog.pg_exttable x, pg_catalog.pg_class c "
-					"WHERE x.reloid = c.oid AND c.oid = '%u'::oid ", tbinfo->dobj.catId.oid);
-		}
-		else
-		{
-			appendPQExpBuffer(query,
-					"SELECT x.urilocation, x.execlocation, x.fmttype, x.fmtopts, x.command, "
-						   "x.rejectlimit, x.rejectlimittype, "
-						   "x.fmterrtbl AS logerrors, "
-						   "pg_catalog.pg_encoding_to_char(x.encoding), "
-						   "x.writable, "
-						   "array_to_string(ARRAY( "
-						   "SELECT pg_catalog.quote_ident(option_name) || ' ' || "
-						   "pg_catalog.quote_literal(option_value) "
-						   "FROM pg_options_to_table(x.options) "
-						   "ORDER BY option_name"
-						   "), E',\n    ') AS options "
-					"FROM pg_catalog.pg_exttable x, pg_catalog.pg_class c "
-					"WHERE x.reloid = c.oid AND c.oid = '%u'::oid ", tbinfo->dobj.catId.oid);
-		}
-
-		res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
-
-		if (PQntuples(res) != 1)
-		{
-			if (PQntuples(res) < 1)
-				pg_log_warning("query to obtain definition of external table \"%s\" returned no data",
-							   tbinfo->dobj.name);
-			else
-				pg_log_warning("query to obtain definition of external table \"%s\" returned more than one definition",
-							   tbinfo->dobj.name);
-			exit_nicely(1);
-
-		}
-
-
-		urilocations = PQgetvalue(res, 0, 0);
-		execlocations = PQgetvalue(res, 0, 1);
-		fmttype = PQgetvalue(res, 0, 2);
-		fmtopts = PQgetvalue(res, 0, 3);
-		command = PQgetvalue(res, 0, 4);
-		rejlim = PQgetvalue(res, 0, 5);
-		rejlimtype = PQgetvalue(res, 0, 6);
-		logerrors = PQgetvalue(res, 0, 7);
-		extencoding = PQgetvalue(res, 0, 8);
-		writable = PQgetvalue(res, 0, 9);
-		options = PQgetvalue(res, 0, 10);
-
-		on_clause = execlocations;
-
-		if ((command && strlen(command) > 0) ||
-			(strncmp(urilocations + 1, "http", strlen("http")) == 0))
-			isweb = true;
-
-		if (writable && writable[0] == 't')
-			iswritable = true;
-
-		if (dopt->binary_upgrade)
-			binary_upgrade_set_pg_class_oids(fout, q, tbinfo->dobj.catId.oid, false);
-
-		appendPQExpBuffer(q, "CREATE %sEXTERNAL %sTABLE %s (",
-						  (iswritable ? "WRITABLE " : ""),
-						  (isweb ? "WEB " : ""),
-						  qualrelname);
-
-		int actual_atts = 0;
-		int j;
-		for (j = 0; j < tbinfo->numatts; j++)
-		{
-			/* Is the attribute not dropped? */
-			if (shouldPrintColumn(dopt, tbinfo, j))
-			{
-				/* Format properly if not first attr */
-				if (actual_atts > 0)
-					appendPQExpBufferChar(q, ',');
-				appendPQExpBufferStr(q, "\n    ");
-
-				/* Attribute name */
-				appendPQExpBuffer(q, "%s ", fmtId(tbinfo->attnames[j]));
-
-				/* Attribute type */
-				if (tbinfo->attisdropped[j])
-				{
-					/*
-					 * ALTER TABLE DROP COLUMN clears
-					 * pg_attribute.atttypid, so we will not have gotten a
-					 * valid type name; insert INTEGER as a stopgap. We'll
-					 * clean things up later.
-					*/
-					appendPQExpBufferStr(q, " INTEGER /* dummy */");
-				}
-				else
-				{
-					appendPQExpBufferStr(q, tbinfo->atttypnames[j]);
-				}
-
-				actual_atts++;
-			}
-		}
-
-		appendPQExpBufferStr(q, "\n)");
-
-		if (command && strlen(command) > 0)
-		{
-			/* add EXECUTE clause */
-			tmpstring = escape_backslashes(command, true);
-			appendPQExpBuffer(q, " EXECUTE E'%s' ", tmpstring);
-			free(tmpstring);
-			tmpstring = NULL;
-		}
-		else
-		{
-			/* add LOCATION clause, remove '{"' and '"}' */
-			urilocations[strlen(urilocations) - 1] = '\0';
-			urilocations++;
-
-			/* the URI of custom protocol will contains \"\" and need to be removed */
-
-			location = nextToken(&urilocations, ",");
-
-			if (location[0] == '\"')
-			{
-				location++;
-				location[strlen(location) - 1] = '\0';
-			}
-			appendPQExpBuffer(q, " LOCATION (\n    '%s'", location);
-			for (; (location = nextToken(&urilocations, ",")) != NULL;)
-			{
-				if (location[0] == '\"')
-				{
-					location++;
-					location[strlen(location) - 1] = '\0';
-				}
-				appendPQExpBuffer(q, ",\n    '%s'", location);
-			}
-			appendPQExpBufferStr(q, "\n) ");
-		}
-
-		/*
-		 * Add ON clause (unless WRITABLE table, which doesn't allow ON).
-		 * ON clauses were up until 5.0 supported only on EXECUTE, in 5.0
-		 * and thereafter they are allowed on all external tables.
-		 */
-		if (!iswritable)
-		{
-			/* remove curly braces */
-			on_clause[strlen(on_clause) - 1] = '\0';
-			on_clause++;
-
-			if (strncmp(on_clause, "HOST:", strlen("HOST:")) == 0)
-				appendPQExpBuffer(q, "ON HOST '%s' ", on_clause + strlen("HOST:"));
-			else if (strncmp(on_clause, "PER_HOST", strlen("PER_HOST")) == 0)
-				appendPQExpBufferStr(q, "ON HOST ");
-			else if (strncmp(on_clause, "MASTER_ONLY", strlen("MASTER_ONLY")) == 0)
-				appendPQExpBufferStr(q, "ON COORDINATOR ");
-			else if (strncmp(on_clause, "COORDINATOR_ONLY", strlen("COORDINATOR_ONLY")) == 0)
-				appendPQExpBufferStr(q, "ON COORDINATOR ");
-			else if (strncmp(on_clause, "SEGMENT_ID:", strlen("SEGMENT_ID:")) == 0)
-				appendPQExpBuffer(q, "ON SEGMENT %s ", on_clause + strlen("SEGMENT_ID:"));
-			else if (strncmp(on_clause, "TOTAL_SEGS:", strlen("TOTAL_SEGS:")) == 0)
-				appendPQExpBuffer(q, "ON %s ", on_clause + strlen("TOTAL_SEGS:"));
-			else if (strncmp(on_clause, "ALL_SEGMENTS", strlen("ALL_SEGMENTS")) == 0)
-				appendPQExpBufferStr(q, "ON ALL ");
-			else
-			{
-				pg_log_warning("illegal ON clause catalog information \"%s\" for command '%s' on table \"%s\"",
-							   on_clause, command, fmtId(tbinfo->dobj.name));
-				exit_nicely(1);
-			}
-		}
-		appendPQExpBufferChar(q, '\n');
-
-		/* add FORMAT clause */
-		tmpstring = escape_fmtopts_string((const char *) fmtopts);
-
-		switch (fmttype[0])
-		{
-			case 't':
-				tabfmt = "text";
-				break;
-			case 'b':
-				/*
-				 * b denotes that a custom format is used.
-				 * the fmtopts string should be formatted as:
-				 * a1 = 'val1',...,an = 'valn'
-				 *
-				 */
-				tabfmt = "custom";
-				customfmt = custom_fmtopts_string(tmpstring);
-				break;
-			case 'a':
-				tabfmt = "avro";
-				customfmt = custom_fmtopts_string(tmpstring);
-				break;
-			case 'p':
-				tabfmt = "parquet";
-				customfmt = custom_fmtopts_string(tmpstring);
-				break;
-			default:
-				tabfmt = "csv";
-		}
-		appendPQExpBuffer(q, "FORMAT '%s' (%s)\n",
-						  tabfmt,
-						  customfmt ? customfmt : tmpstring);
-		pg_free(tmpstring);
-		if (customfmt)
-		{
-			free(customfmt);
-			customfmt = NULL;
-		}
-
-		if (options && options[0] != '\0')
-		{
-			appendPQExpBuffer(q, "OPTIONS (\n %s\n )\n", options);
-		}
-
-		/* add ENCODING clause */
-		appendPQExpBuffer(q, "ENCODING '%s'", extencoding);
-
-		/* add Single Row Error Handling clause (if any) */
-		if (rejlim && strlen(rejlim) > 0)
-		{
-			appendPQExpBufferChar(q, '\n');
-
-			/*
-				* Error tables were removed and replaced with file error
-				* logging.
-				*/
-			if (logerrors && strlen(logerrors) > 0)
-			{
-				appendPQExpBufferStr(q, "LOG ERRORS ");
-				if (logerrors[0] == 'p' && strlen(logerrors) == 1)
-					appendPQExpBufferStr(q, "PERSISTENTLY ");
-			}
-
-			/* reject limit */
-			appendPQExpBuffer(q, "SEGMENT REJECT LIMIT %s", rejlim);
-
-			/* reject limit type */
-			if (rejlimtype[0] == 'r')
-				appendPQExpBufferStr(q, " ROWS");
-			else
-				appendPQExpBufferStr(q, " PERCENT");
-		}
-
-		/* DISTRIBUTED BY clause (if WRITABLE table) */
-		if (iswritable)
-			addDistributedBy(fout, q, tbinfo, actual_atts);
-
-		appendPQExpBufferStr(q, ";\n");
-
-		PQclear(res);
-
-
-		destroyPQExpBuffer(query);
-		free(qualrelname);
-}
-
 /*
  * Create the AS clause for a view or materialized view. The semicolon is
  * stripped because a materialized view must add a WITH NO DATA clause.
@@ -16817,7 +16492,6 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 	char	   *storage;
 	int			j,
 				k;
-	bool		hasExternalPartitions = false;
 	char	   *ftoptions = NULL;
 	char	   *srvname = NULL;
 	char	   *partkeydef = NULL;
@@ -16938,18 +16612,11 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 				break;
 			default:
 				reltypename = "TABLE";
-				/* Is it an external table (server GPDB 6.x and below.) */
-				if (tbinfo->relstorage == RELSTORAGE_EXTERNAL)
-					reltypename = "EXTERNAL TABLE";
 				break;
 		}
 	}
 
-	if (strcmp(reltypename, "EXTERNAL TABLE") == 0)
-	{
-		dumpExternal(fout, tbinfo, q, delq);
-	}
-	else if (strcmp(reltypename, "VIEW") == 0)
+	if (strcmp(reltypename, "VIEW") == 0)
 	{
 		/* handled above already */
 	}
@@ -16965,50 +16632,7 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 			binary_upgrade_set_pg_class_oids(fout, q,
 											 tbinfo->dobj.catId.oid, false);
 
-			/*
-			 * If this is a partition hierarchy parent, dump the Oid
-			 * preassignments for each partition member individually.
-			 *
-			 * GPDB_12_MERGE_FIXME: Disabled when dumping GPDB 7. But do
-			 * we need it when dumping older versions, either? The presumed
-			 * *target* is the current latest version anyway.
-			 */
-			if (tbinfo->parparent && fout->remoteVersion < 100000)
-			{
-				PQExpBuffer 	partquery = createPQExpBuffer();
-				PGresult	   *partres;
-
-				appendPQExpBuffer(partquery, "SELECT DISTINCT(child.oid) "
-											 "FROM pg_catalog.pg_partition part, "
-											 "     pg_catalog.pg_partition_rule rule, "
-											 "     pg_catalog.pg_class child "
-											 "WHERE part.parrelid = '%u'::pg_catalog.oid "
-											 "  AND rule.paroid = part.oid "
-											 "  AND child.oid = rule.parchildrelid",
-											 tbinfo->dobj.catId.oid);
-				partres = ExecuteSqlQuery(fout, partquery->data, PGRES_TUPLES_OK);
-
-				/* It really should..  */
-				if (PQntuples(partres) > 0)
-				{
-					int			i;
-
-					for (i = 0; i < PQntuples(partres); i++)
-					{
-						Oid part_oid = atooid(PQgetvalue(partres, i, 0));
-						TableInfo *tbinfo = findTableByOid(part_oid);
-
-						if (tbinfo->relstorage == 'x')
-							hasExternalPartitions = true;
-
-						binary_upgrade_set_pg_class_oids(fout, q, part_oid, false);
-						binary_upgrade_set_type_oids_by_rel(fout, q, tbinfo);
-					}
-				}
-
-				PQclear(partres);
-				destroyPQExpBuffer(partquery);
-			}
+			Assert(fout->remoteVersion >= 100000);
 		}
 
 		appendPQExpBuffer(q, "CREATE %s%s %s",
@@ -17298,91 +16922,6 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 			addDistributedBy(fout, q, tbinfo, actual_atts);
 
 		appendPQExpBufferStr(q, ";\n");
-
-		/*
-		 * Exchange external partitions. This is an expensive process, so only
-		 * run it if we've found evidence of external partitions up above.
-		 */
-		if (hasExternalPartitions)
-		{
-			int i = 0;
-			int ntups = 0;
-			char *relname = NULL;
-			int i_relname = 0;
-			int i_parname = 0;
-			int i_partitionrank = 0;
-			PQExpBuffer query = createPQExpBuffer();
-			PGresult   *res;
-
-			/*
-			 * The multiple JOINs below trigger an apparent planner bug which
-			 * may effectively hang the backend. This bug is present in both
-			 * released versions of GPDB and the current development tip at time
-			 * of writing. Disable nestloops temporarily as a workaround.
-			 *
-			 * TODO: when this bug is fixed, version-gate this code so that we
-			 * don't run it on well-behaved backends.
-			 */
-			ExecuteSqlStatement(fout, "SET enable_nestloop TO off");
-
-			appendPQExpBuffer(query, "SELECT DISTINCT cc.relname, ps.partitionrank, pp.parname "
-					"FROM pg_partition p "
-					"JOIN pg_class c on (p.parrelid = c.oid) "
-					"JOIN pg_partitions ps on (c.relname = ps.tablename) "
-					"JOIN pg_class cc on (ps.partitiontablename = cc.relname) "
-					"JOIN pg_partition_rule pp on (cc.oid = pp.parchildrelid) "
-					"WHERE p.parrelid = %u AND (cc.relstorage='%c' OR cc.relkind = '%c');",
-					tbinfo->dobj.catId.oid,
-					RELSTORAGE_EXTERNAL, RELKIND_FOREIGN_TABLE);
-
-			res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
-
-			ntups = PQntuples(res);
-			i_relname = PQfnumber(res, "relname");
-			i_parname = PQfnumber(res, "parname");
-			i_partitionrank = PQfnumber(res, "partitionrank");
-
-			/* FIXME: does this code handle external SUBPARTITIONs correctly? */
-			for (i = 0; i < ntups; i++)
-			{
-				char tmpExtTable[500] = {0};
-				relname = pg_strdup(PQgetvalue(res, i, i_relname));
-				snprintf(tmpExtTable, sizeof(tmpExtTable), "%s%s", relname, EXT_PARTITION_NAME_POSTFIX);
-				char *qualTmpExtTable = pg_strdup(fmtQualifiedId(tbinfo->dobj.namespace->dobj.name,
-																 tmpExtTable));
-
-				appendPQExpBuffer(q, "ALTER TABLE %s ", qualrelname);
-				/*
-				 * If it is an anonymous range partition we must exchange for
-				 * the rank rather than the parname.
-				 */
-				if (PQgetisnull(res, i, i_parname) || !strlen(PQgetvalue(res, i, i_parname)))
-				{
-					appendPQExpBuffer(q, "EXCHANGE PARTITION FOR (RANK(%s)) ",
-									  PQgetvalue(res, i, i_partitionrank));
-				}
-				else
-				{
-					appendPQExpBuffer(q, "EXCHANGE PARTITION %s ",
-									  fmtId(PQgetvalue(res, i, i_parname)));
-				}
-				appendPQExpBuffer(q, "WITH TABLE %s WITHOUT VALIDATION; ", qualTmpExtTable);
-
-				appendPQExpBuffer(q, "\n");
-
-				appendPQExpBuffer(q, "DROP TABLE %s; ", qualTmpExtTable);
-
-				appendPQExpBuffer(q, "\n");
-				free(relname);
-				free(qualTmpExtTable);
-			}
-
-			PQclear(res);
-			destroyPQExpBuffer(query);
-
-			/* TODO: version-gate this when the planner bug is fixed; see above. */
-			ExecuteSqlStatement(fout, "SET enable_nestloop TO on");
-		}
 
 		/* Materialized views can depend on extensions */
 		if (tbinfo->relkind == RELKIND_MATVIEW)
